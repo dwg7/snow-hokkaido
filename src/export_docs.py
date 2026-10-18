@@ -46,7 +46,8 @@ def main():
     series = {
         "snow_rate": ("積雪率 (確認できたセル中)", "n_snow / n_clear_valid"),
         "cloud_rate": ("雲の割合 (走査できたセル中)", "n_cloud / n_scanned"),
-        "visible_rate": ("見えた割合 (陸セル中)", "n_clear_valid / n_land"),
+        "visible_rate": ("見えた割合 (陸セル全体中)", "n_clear_valid / n_land"),
+        "scan_rate": ("走査できた割合 (陸セル全体中)", "n_scanned / n_land"),
     }
     for key, (label, formula) in series.items():
         values, notes = {}, {}
@@ -58,6 +59,9 @@ def main():
             elif key == "cloud_rate":
                 v = pct(r.n_cloud, r.n_scanned)
                 note = f"{r.n_cloud:,} / {r.n_scanned:,} セル"
+            elif key == "scan_rate":
+                v = pct(r.n_scanned, r.n_land)
+                note = f"{r.n_scanned:,} / {r.n_land:,} セル"
             else:
                 v = pct(r.n_clear_valid, r.n_land)
                 note = f"{r.n_clear_valid:,} / {r.n_land:,} セル"

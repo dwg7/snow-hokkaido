@@ -47,6 +47,19 @@ Properties tested in `tests/test_pixel.py`: order independence of input, prefix 
 
 Read scale and offset from each COG's own metadata, never from STAC `raster:bands` (see `stage1-checks.md`: l2a files carry none and are already offset-removed; c1 files carry -0.1). Still worth a per-scene sanity check before a series is trusted: share of negative reflectance in B03 and agreement of NDSI snow with SCL=11 where snow exists. Recorded in obs tags and `qc_flags` bit0 (decided); the threshold needs a few more scenes (2025 and winter) to set.
 
+## 7. Time slider / looking back (what the schema supports, what is missing)
+
+Supported by design:
+- `obs` is append-only per pass, so any past date can be rebuilt; `pixel.fold(obs, upto_day=k)` gives the cell state as of day k from the log alone (prefix property tested), with no stored snapshots.
+- `events` (municipality x pass) is a per-municipality time series, sorted by (muni_code, obs_start_utc); `derived/state` and `derived/progress` (municipality x date) are specified in HANDOFF appendix A for "as of date" views with age.
+
+Not done yet:
+- `derived/state`, `derived/progress`, `derived/series/*.json` and a `latest.json` do not exist; the dashboard shows one observation.
+- Per-date view data: the tabularmaps series contract holds one `asOf`. A slider needs either one file per metric and date or one file per metric and season (`{dates: [...], values: {code: [...]}}`). Not designed yet; about 194 values per date per metric is small.
+- Per-date map overlay: one class PNG per date is cheap for one z9 tile but not for all of Hokkaido (7168x4608 cells); options are per-z9-tile files, COG range reads, or tiles. Undecided.
+- Two modes must stay separate: "observed that day" (events/obs) vs "last known as of that day" (pixel fold, always with age).
+- History starts at the first ingested scene. Earlier Sentinel-2 scenes exist in the archive and the fold accepts them, but the censored flag ("first clear observation is snow") depends on where the record starts.
+
 ## Decision log
 
 | item | status |

@@ -9,7 +9,8 @@
  *          ├─ maplibre            MapLibre map: obs classes (image overlay) + municipality outlines
  *          ├─ tabular:snow_rate   tabularmaps cells coloured by a series
  *          ├─ tabular:cloud_rate
- *          └─ tabular:visible_rate
+ *          ├─ tabular:visible_rate
+ *          └─ tabular:scan_rate
  *
  * Data (all under dataUrl): stage1.json, obs-class.png, muni-stage1.geojson,
  *   series/<key>.json ({label, unit, asOf, min, max, values:{code:number}, notes:{code:string}}),
@@ -24,7 +25,8 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
   const TABULAR = [
     { key: 'snow_rate', name: '積雪率 (tabular map)' },
     { key: 'cloud_rate', name: '雲の割合 (tabular map)' },
-    { key: 'visible_rate', name: '見えた割合 (tabular map)' }
+    { key: 'visible_rate', name: '見えた割合 (tabular map)' },
+    { key: 'scan_rate', name: '走査できた割合 (tabular map)' }
   ];
 
   const fetchJson = (p) => fetch(dataUrl + p, { cache: 'no-store' }).then((r) => {
@@ -110,7 +112,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
         mode: 'region', title: name, includeNorthernTerritoriesVillages: true
       });
       state.map.setSeries(series);
-      const note = el('div', 'sh-tabular-note', '値があるのは段階1の範囲に入る市町村だけです (それ以外は無データ)。範囲が一部だけの市町村は、範囲内のセルだけの値です。');
+      const note = el('div', 'sh-tabular-note', '値があるのは、段階1の範囲に入る市町村だけです (それ以外は無データ)。範囲に一部だけ入る市町村は、「見えた割合」と「走査できた割合」が市町村全体に対する割合なので小さくなります。積雪率と雲の割合は、範囲内のセルだけの割合です。');
       host.appendChild(note);
     }).catch((err) => { host.appendChild(el('p', 'sh-p', '読み込みに失敗: ' + err.message)); });
   }

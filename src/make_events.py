@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import rasterio
+from rasterio.windows import from_bounds
 
 NDSI_THRESHOLD = 0.42
 MARGIN_DELTA = 0.05  # provisional: |NDSI - threshold| <= delta is "marginal"
@@ -19,7 +20,13 @@ COUNT_COLS = ["n_land", "n_scanned", "n_cloud", "n_shadow", "n_clear", "n_clear_
 
 
 def build_events(cls, ndsi_q, muni_index, flags, master, meta):
-    """Aggregate per-cell obs arrays by municipality. All arrays are (n, n); returns a DataFrame."""
+    """Aggregate per-cell obs arrays by municipality. All arrays share one shape; returns a DataFrame.
+
+    Cells not covered by the pass must be class 0 (not scanned); n_land counts every land cell of the
+    municipality, so it equals master.n_land_cells and scan_rate = n_scanned / n_land shows coverage.
+    Municipalities with no scanned cell are skipped (the pass did not touch them).
+    """
+    k = int(master.muni_index.max()) + 1
     land = (muni_index > 0) & ((flags & (STATIC_LAKE | STATIC_SEA)) == 0)
     canopy = (flags & STATIC_CANOPY) != 0
     ndsi = ndsi_q.astype("float64") / 100 - 1
@@ -38,45 +45,56 @@ def build_events(cls, ndsi_q, muni_index, flags, master, meta):
         "n_marginal": marginal,
         "n_nosnow": valid & (cls == 3) & ~marginal,
     }
-    rows = []
-    for r in master.itertuples():
-        m = muni_index == r.muni_index
-        row = {"muni_code": r.muni_code}
-        row.update({k: int((v & m).sum()) for k, v in masks.items()})
-        v = ndsi[valid & m]
-        for q in (10, 50, 90):
-            row[f"ndsi_p{q}"] = float(np.percentile(v, q)) if v.size else np.nan
-        if row["n_land"] == 0:
-            continue
-        rows.append(row)
-    df = pd.DataFrame(rows)
-    for k, val in meta.items():
-        df[k] = [val] * len(df) if isinstance(val, list) else val
+    flat = muni_index.ravel()
+    counts = {name: np.bincount(flat[m.ravel()], minlength=k)[1:k] for name, m in masks.items()}
+    df = pd.DataFrame(counts)
+    df.insert(0, "muni_code", master.sort_values("muni_index").muni_code.to_numpy())
+    # NDSI percentiles over valid cells, per municipality
+    vm = valid.ravel()
+    q = pd.DataFrame({"m": flat[vm], "v": ndsi.ravel()[vm]}).groupby("m")["v"]
+    for p in (10, 50, 90):
+        df[f"ndsi_p{p}"] = q.quantile(p / 100).reindex(range(1, k)).to_numpy()
+    df = df[df.n_scanned > 0].reset_index(drop=True)
+    for key, val in meta.items():
+        df[key] = [val] * len(df) if isinstance(val, list) else val
     return df
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--obs", required=True)
+    ap.add_argument("--obs", required=True, nargs="+", help="obs files of one pass")
     ap.add_argument("--cellmap", default="ledger/grid/cellmap.tif")
     ap.add_argument("--master", default="ledger/muni/master.parquet")
     ap.add_argument("--out", default="ledger")
     a = ap.parse_args()
 
-    with rasterio.open(a.obs) as d:
-        cls, ndsi_q = d.read(1), d.read(2)
-        tags = d.tags()
     with rasterio.open(a.cellmap) as d:
         muni_index, flags = d.read(1), d.read(2)
+        cm_tf, cm_shape = d.transform, d.shape
     master = pd.read_parquet(a.master)
+    cls = np.zeros(cm_shape, np.uint8)
+    ndsi_q = np.full(cm_shape, 255, np.uint8)
+    tags, scenes, starts, ends = None, [], [], []
+    for path in a.obs:  # obs files of one pass (one per z9 tile); everything else stays class 0
+        with rasterio.open(path) as d:
+            t = d.tags()
+            scenes.append(t["scene"]); starts.append(t["obs_start_utc"]); ends.append(t["obs_end_utc"])
+            w = from_bounds(*d.bounds, cm_tf)
+            r0, c0 = round(w.row_off), round(w.col_off)
+            cls[r0:r0 + d.height, c0:c0 + d.width] = d.read(1)
+            ndsi_q[r0:r0 + d.height, c0:c0 + d.width] = d.read(2)
+        if tags is None:
+            tags = t
+        elif t["datatake_id"] != tags["datatake_id"]:
+            raise SystemExit(f"obs files are from different passes: {path}")
 
-    digest = hashlib.sha1(Path(a.obs).read_bytes()).hexdigest()[:12]
+    digest = hashlib.sha1(tags["datatake_id"].encode()).hexdigest()[:12]  # event id keyed by pass
     meta = {
         "sensor": "s2",
-        "obs_start_utc": pd.Timestamp(tags["obs_start_utc"]),
-        "obs_end_utc": pd.Timestamp(tags["obs_end_utc"]),
+        "obs_start_utc": min(pd.Timestamp(x) for x in starts),
+        "obs_end_utc": max(pd.Timestamp(x) for x in ends),
         "sun_elev_deg": np.float32(tags["sun_elevation"]),
-        "sources": [tags["scene"]],
+        "sources": sorted(scenes),
         "cell_zoom": np.uint8(int(tags["zoom"])),
         "qc_flags": np.uint16(QC_REFLECTANCE if float(tags.get("qc_neg_b03_frac", 0)) > NEG_B03_MAX else 0),
         "algo_version": tags["algo_version"],
@@ -89,10 +107,10 @@ def main():
     for c in COUNT_COLS:
         df[c] = df[c].astype("uint32")
 
-    season = Path(a.obs).parent.name
+    season = Path(a.obs[0]).parent.name
     out = Path(a.out) / "events" / season
     out.mkdir(parents=True, exist_ok=True)
-    path = out / f"part-{Path(a.obs).stem}.parquet"
+    path = out / f"part-{Path(a.obs[0]).stem}.parquet"
     df.to_parquet(path, index=False)
     print(df[["muni_code"] + COUNT_COLS].to_string())
     print("wrote", path)

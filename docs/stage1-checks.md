@@ -55,3 +55,11 @@ Query: bbox 142.73,43.58,143.44,44.09; datetime 2026-09-01..2026-10-18.
 - Checked only in the Claude desktop app's embedded browser. Not checked in Chrome/Safari/Firefox, on phones, or on GitHub Pages.
 - Rendering quirk: with `raster-resampling: 'nearest'` the class overlay rendered black there; `linear` works. Cause **unconfirmed**. Earlier probes also showed partial alpha / `raster-opacity < 1` rendering dark; the PNG is now opaque (alpha 0/255) and opacity stays 1, so translucency was not re-tested.
 - Click on a municipality outline shows the snow rate popup; tabular views have no click-through to a time series yet (single observation only).
+
+## All-Hokkaido cellmap (replaces the stage-1-only cellmap)
+
+- `ledger/grid/cellmap.tif`: one COG mosaic, 7168x4608 z18 cells covering z9 tiles x 454..467, y 183..191 (the N03 extent). 194 codes in `muni/master.parquet` (178 municipalities, 10 Sapporo wards, 6 Northern Territories villages); 6,782,469 land cells (about the 6.7 million estimated in the handoff).
+- Same rule as before (cell center inside polygon), done by rasterization. On the stage-1 tile the new mosaic assigns all 262,144 cells to the same municipality as the previous tile-only cellmap.
+- Cell area vs polygon area: median |diff| 0.05%, max 0.34% (`docs/muni-area-check.md`). Official areas were not fetched; that check remains open.
+- Sapporo: N03 has ten wards and no city code 01100, while the tabularmaps layout uses 01100 (plus a ward expansion); the series export has no Sapporo values yet, so the mapping is **open**.
+- `events` now use the full municipality land-cell count as `n_land` (cells outside a pass's footprint are class 0), skip municipalities with no scanned cell, and take several obs files of one pass (`just events <obs> <obs> ...`). `visible_rate` therefore shows coverage for municipalities cut by the tile; `scan_rate` was added.
