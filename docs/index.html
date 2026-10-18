@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>snow-hokkaido</title>
+    <!-- Versions are pinned; confirm dist files exist with `curl -sI` before changing (a missing file gives a blank page). -->
+    <link rel="stylesheet" href="https://unpkg.com/openmct@4.3.1/dist/espressoTheme.css" />
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" />
+    <link rel="stylesheet" href="./vendor/tabularmap/style.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body class="tm-dark">
+    <script>
+      // Over a CDN the search indexer's SharedWorker is blocked cross-origin; fall back to the synchronous path.
+      window.SharedWorker = undefined;
+    </script>
+    <script src="https://unpkg.com/openmct@4.3.1/dist/openmct.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+    <div id="app"></div>
+    <script src="./vendor/tabularmap/tabularmap.js"></script>
+    <script src="./openmct-plugin.js"></script>
+    <script>
+      (function () {
+        const script = document.querySelector('script[src*="openmct.js"]');
+        if (script) openmct.setAssetPath(script.src.replace(/openmct\.js(?:\?.*)?$/, ''));
+        openmct.install(openmct.plugins.LocalStorage());
+        openmct.install(openmct.plugins.UTCTimeSystem());
+        openmct.install(openmct.plugins.Espresso());
+        openmct.install(SnowHokkaidoPlugin({ dataUrl: './data/' }));
+        openmct.start('#app');
+      })();
+    </script>
+  </body>
+</html>
