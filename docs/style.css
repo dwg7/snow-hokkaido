@@ -1,0 +1,14 @@
+/* snow-hokkaido views inside Open MCT (Espresso, dark). Floating panels get their own opaque surface token. */
+:root { --sh-panel: #1f1f1e; --sh-ink: #f2f1ec; --sh-muted: #a9a79d; }
+.sh-host { height: 100%; width: 100%; position: relative; color: var(--sh-ink); }
+.sh-h { margin: 12px 14px 4px; font-size: 18px; }
+.sh-p { margin: 6px 14px; line-height: 1.6; font-size: 13px; }
+.sh-muted { color: var(--sh-muted); }
+.sh-map { position: absolute; inset: 0; }
+.sh-legend { position: absolute; left: 10px; bottom: 28px; z-index: 2; background: var(--sh-panel); color: var(--sh-ink);
+  border: 1px solid #3a3a37; border-radius: 6px; padding: 8px 10px; font-size: 12px; line-height: 1.5; }
+.sh-legend-t { font-weight: 600; margin-bottom: 4px; }
+.sh-legend-r i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: -2px; border: 1px solid #555; }
+.sh-legend-n { color: var(--sh-muted); margin-top: 4px; font-size: 11px; }
+.sh-tabular-note { font-size: 11px; color: var(--sh-muted); padding: 4px 10px 8px; }
+.maplibregl-popup-content { color: #111; font-size: 12px; line-height: 1.5; }

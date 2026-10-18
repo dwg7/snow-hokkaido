@@ -1,0 +1,64 @@
+/* tabularmaps 北海道 — 描画コアと Open MCT ビューの共通スタイル */
+.tm-root {
+  --tm-surface: #fcfcfb;
+  --tm-ink: #0b0b0b;
+  --tm-ink-2: #52514e;
+  --tm-muted: #898781;
+  --tm-hairline: #e1e0d9;
+  --tm-nodata: #ecebe7;
+  --tm-focus: #eb6834;
+  --tm-panel: #fcfcfb;   /* 面が透明な環境 (Open MCT 内) でも塗る必要がある要素の背景 */
+  --tm-on-ink: #fcfcfb;  /* インク色の上に置く文字 (ツールチップ) */
+  color: var(--tm-ink);
+  background: var(--tm-surface);
+  font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", system-ui, sans-serif;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 8px 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .tm-root {
+    --tm-surface: #1a1a19; --tm-ink: #ffffff; --tm-ink-2: #c3c2b7; --tm-muted: #898781;
+    --tm-hairline: #2c2c2a; --tm-nodata: #383835; --tm-panel: #1a1a19; --tm-on-ink: #1a1a19;
+  }
+}
+:root[data-theme="dark"] .tm-root, .tm-dark .tm-root {
+  --tm-surface: #1a1a19; --tm-ink: #ffffff; --tm-ink-2: #c3c2b7; --tm-muted: #898781;
+  --tm-hairline: #2c2c2a; --tm-nodata: #383835; --tm-panel: #1a1a19; --tm-on-ink: #1a1a19;
+}
+.tm-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-bottom: 6px; }
+.tm-title { font-size: 14px; font-weight: 600; }
+.tm-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 11px; color: var(--tm-ink-2); }
+.tm-legend-bar { width: 120px; height: 10px; border-radius: 3px; }
+.tm-legend-nodata::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--tm-nodata); margin-right: 4px; vertical-align: -1px; }
+.tm-legend-sw i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.tm-controls { margin-left: auto; display: flex; gap: 6px; }
+.tm-btn { font: inherit; font-size: 11px; white-space: nowrap; padding: 3px 8px; border: 1px solid var(--tm-hairline); border-radius: 4px; background: transparent; color: var(--tm-ink-2); cursor: pointer; }
+.tm-btn:hover:not(:disabled) { color: var(--tm-ink); border-color: var(--tm-muted); }
+.tm-btn:disabled { opacity: 0.4; cursor: default; }
+.tm-stage { position: relative; flex: 1 1 auto; min-height: 0; display: flex; justify-content: center; }
+.tm-svg { height: 100%; max-width: 100%; aspect-ratio: 1 / 1; display: block; }
+.tm-svg text { font-family: inherit; pointer-events: none; }
+.tm-svg .tm-cell rect { stroke: var(--tm-surface); stroke-width: 0; cursor: pointer; }
+.tm-svg .tm-block rect { stroke: var(--tm-ink-2); stroke-width: 1; }
+.tm-svg .tm-block text { font-weight: 600; }
+.tm-svg .tm-ward rect { stroke: var(--tm-surface); stroke-width: 1; }
+.tm-svg .tm-space { fill: none; stroke: var(--tm-hairline); stroke-width: 1; }
+.tm-svg .tm-ntv-off rect { stroke: var(--tm-hairline); stroke-width: 1; cursor: default; }
+.tm-svg .tm-hover rect, .tm-svg .tm-selected rect { stroke: var(--tm-focus); stroke-width: 2; }
+.tm-tip { position: absolute; pointer-events: none; background: var(--tm-ink); color: var(--tm-on-ink); padding: 6px 9px; border-radius: 5px; font-size: 12px; line-height: 1.35; max-width: 220px; z-index: 5; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.tm-tip b { display: block; font-size: 13px; }
+.tm-tip-sub { display: block; opacity: .75; font-size: 11px; }
+.tm-tip-val { display: block; margin-top: 2px; }
+.tm-table { max-height: 40%; overflow: auto; margin-top: 8px; border-top: 1px solid var(--tm-hairline); font-size: 12px; }
+.tm-table table { border-collapse: collapse; width: 100%; }
+.tm-table th, .tm-table td { padding: 3px 8px; text-align: left; border-bottom: 1px solid var(--tm-hairline); white-space: nowrap; }
+.tm-table th { color: var(--tm-ink-2); font-weight: 600; position: sticky; top: 0; background: var(--tm-panel); }
+.tm-table .tm-num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Open MCT の中で使う時 (Espresso テーマは暗色) */
+.c-object-view .tm-root, .l-shell .tm-root { --tm-surface: transparent; }
+.tm-openmct-note { font-size: 11px; color: var(--tm-muted); margin-top: 4px; }

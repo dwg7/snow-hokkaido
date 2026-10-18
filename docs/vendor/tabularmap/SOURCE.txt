@@ -1,0 +1,2 @@
+Vendored from https://github.com/tabularmaps/do (CC0-1.0), commit 243987259d0f54cb9a6c8c923797a89b3f71f7a1
+Files: tabularmap.js, style.css (docs/), data/*.json under docs/data/

@@ -1,0 +1,2884 @@
+{
+ "$comment": "北海道179市町村 + 北方領土6村のマスター。code=全国地方公共団体コード上5桁、lon/lat=役場所在地の概略値(±0.05度程度、配置最適化の目安にのみ使用)。status: active=179市町村 (北海道庁「道内179市町村」・総務省の市町村数と同じ範囲)、northern_territories=北方領土の6村 (総務省コード一覧・国土地理院面積調に収録。市町村としての行政の実態がない (内閣衆質九五第五号答弁書の言い回し)。地図としては既定で描き、市町村数の集計には含めない)。",
+ "bureaus": [
+  {
+   "key": "石狩",
+   "name": "石狩振興局",
+   "seat": "札幌",
+   "count": 8,
+   "activeCount": 8
+  },
+  {
+   "key": "渡島",
+   "name": "渡島総合振興局",
+   "seat": "函館",
+   "count": 11,
+   "activeCount": 11
+  },
+  {
+   "key": "檜山",
+   "name": "檜山振興局",
+   "seat": "江差",
+   "count": 7,
+   "activeCount": 7
+  },
+  {
+   "key": "後志",
+   "name": "後志総合振興局",
+   "seat": "倶知安",
+   "count": 20,
+   "activeCount": 20
+  },
+  {
+   "key": "空知",
+   "name": "空知総合振興局",
+   "seat": "岩見沢",
+   "count": 24,
+   "activeCount": 24
+  },
+  {
+   "key": "上川",
+   "name": "上川総合振興局",
+   "seat": "旭川",
+   "count": 23,
+   "activeCount": 23
+  },
+  {
+   "key": "留萌",
+   "name": "留萌振興局",
+   "seat": "留萌",
+   "count": 8,
+   "activeCount": 8
+  },
+  {
+   "key": "宗谷",
+   "name": "宗谷総合振興局",
+   "seat": "稚内",
+   "count": 10,
+   "activeCount": 10
+  },
+  {
+   "key": "オホーツク",
+   "name": "オホーツク総合振興局",
+   "seat": "網走",
+   "count": 18,
+   "activeCount": 18
+  },
+  {
+   "key": "胆振",
+   "name": "胆振総合振興局",
+   "seat": "室蘭",
+   "count": 11,
+   "activeCount": 11
+  },
+  {
+   "key": "日高",
+   "name": "日高振興局",
+   "seat": "浦河",
+   "count": 7,
+   "activeCount": 7
+  },
+  {
+   "key": "十勝",
+   "name": "十勝総合振興局",
+   "seat": "帯広",
+   "count": 19,
+   "activeCount": 19
+  },
+  {
+   "key": "釧路",
+   "name": "釧路総合振興局",
+   "seat": "釧路",
+   "count": 8,
+   "activeCount": 8
+  },
+  {
+   "key": "根室",
+   "name": "根室振興局",
+   "seat": "根室",
+   "count": 11,
+   "activeCount": 5
+  }
+ ],
+ "municipalities": [
+  {
+   "code": "01100",
+   "name": "札幌",
+   "fullName": "札幌市",
+   "bureau": "石狩",
+   "class": "市",
+   "lon": 141.354,
+   "lat": 43.062,
+   "footprint": [
+    4,
+    4
+   ],
+   "bureauSeat": true,
+   "status": "active"
+  },
+  {
+   "code": "01217",
+   "name": "江別",
+   "fullName": "江別市",
+   "bureau": "石狩",
+   "class": "市",
+   "lon": 141.536,
+   "lat": 43.104,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01224",
+   "name": "千歳",
+   "fullName": "千歳市",
+   "bureau": "石狩",
+   "class": "市",
+   "lon": 141.651,
+   "lat": 42.821,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01231",
+   "name": "恵庭",
+   "fullName": "恵庭市",
+   "bureau": "石狩",
+   "class": "市",
+   "lon": 141.578,
+   "lat": 42.883,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01234",
+   "name": "北広島",
+   "fullName": "北広島市",
+   "bureau": "石狩",
+   "class": "市",
+   "lon": 141.563,
+   "lat": 42.985,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01235",
+   "name": "石狩",
+   "fullName": "石狩市",
+   "bureau": "石狩",
+   "class": "市",
+   "lon": 141.316,
+   "lat": 43.171,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01303",
+   "name": "当別",
+   "fullName": "当別町",
+   "bureau": "石狩",
+   "class": "町",
+   "lon": 141.518,
+   "lat": 43.22,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01304",
+   "name": "新篠津",
+   "fullName": "新篠津村",
+   "bureau": "石狩",
+   "class": "村",
+   "lon": 141.648,
+   "lat": 43.22,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01202",
+   "name": "函館",
+   "fullName": "函館市",
+   "bureau": "渡島",
+   "class": "市",
+   "lon": 140.729,
+   "lat": 41.769,
+   "footprint": [
+    2,
+    2
+   ],
+   "bureauSeat": true,
+   "status": "active"
+  },
+  {
+   "code": "01236",
+   "name": "北斗",
+   "fullName": "北斗市",
+   "bureau": "渡島",
+   "class": "市",
+   "lon": 140.653,
+   "lat": 41.824,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01331",
+   "name": "松前",
+   "fullName": "松前町",
+   "bureau": "渡島",
+   "class": "町",
+   "lon": 140.109,
+   "lat": 41.43,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01332",
+   "name": "福島",
+   "fullName": "福島町",
+   "bureau": "渡島",
+   "class": "町",
+   "lon": 140.253,
+   "lat": 41.481,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01333",
+   "name": "知内",
+   "fullName": "知内町",
+   "bureau": "渡島",
+   "class": "町",
+   "lon": 140.421,
+   "lat": 41.593,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01334",
+   "name": "木古内",
+   "fullName": "木古内町",
+   "bureau": "渡島",
+   "class": "町",
+   "lon": 140.428,
+   "lat": 41.679,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01337",
+   "name": "七飯",
+   "fullName": "七飯町",
+   "bureau": "渡島",
+   "class": "町",
+   "lon": 140.688,
+   "lat": 41.887,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01343",
+   "name": "鹿部",
+   "fullName": "鹿部町",
+   "bureau": "渡島",
+   "class": "町",
+   "lon": 140.813,
+   "lat": 42.031,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01345",
+   "name": "森",
+   "fullName": "森町",
+   "bureau": "渡島",
+   "class": "町",
+   "lon": 140.573,
+   "lat": 42.107,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01346",
+   "name": "八雲",
+   "fullName": "八雲町",
+   "bureau": "渡島",
+   "class": "町",
+   "lon": 140.264,
+   "lat": 42.256,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01347",
+   "name": "長万部",
+   "fullName": "長万部町",
+   "bureau": "渡島",
+   "class": "町",
+   "lon": 140.375,
+   "lat": 42.512,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01361",
+   "name": "江差",
+   "fullName": "江差町",
+   "bureau": "檜山",
+   "class": "町",
+   "lon": 140.127,
+   "lat": 41.869,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": true,
+   "status": "active"
+  },
+  {
+   "code": "01362",
+   "name": "上ノ国",
+   "fullName": "上ノ国町",
+   "bureau": "檜山",
+   "class": "町",
+   "lon": 140.117,
+   "lat": 41.804,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01363",
+   "name": "厚沢部",
+   "fullName": "厚沢部町",
+   "bureau": "檜山",
+   "class": "町",
+   "lon": 140.23,
+   "lat": 41.923,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01364",
+   "name": "乙部",
+   "fullName": "乙部町",
+   "bureau": "檜山",
+   "class": "町",
+   "lon": 140.145,
+   "lat": 41.968,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01367",
+   "name": "奥尻",
+   "fullName": "奥尻町",
+   "bureau": "檜山",
+   "class": "町",
+   "lon": 139.518,
+   "lat": 42.155,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01370",
+   "name": "今金",
+   "fullName": "今金町",
+   "bureau": "檜山",
+   "class": "町",
+   "lon": 140.293,
+   "lat": 42.428,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01371",
+   "name": "せたな",
+   "fullName": "せたな町",
+   "bureau": "檜山",
+   "class": "町",
+   "lon": 139.859,
+   "lat": 42.447,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01203",
+   "name": "小樽",
+   "fullName": "小樽市",
+   "bureau": "後志",
+   "class": "市",
+   "lon": 140.994,
+   "lat": 43.191,
+   "footprint": [
+    2,
+    2
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01391",
+   "name": "島牧",
+   "fullName": "島牧村",
+   "bureau": "後志",
+   "class": "村",
+   "lon": 140.196,
+   "lat": 42.718,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01392",
+   "name": "寿都",
+   "fullName": "寿都町",
+   "bureau": "後志",
+   "class": "町",
+   "lon": 140.226,
+   "lat": 42.792,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01393",
+   "name": "黒松内",
+   "fullName": "黒松内町",
+   "bureau": "後志",
+   "class": "町",
+   "lon": 140.31,
+   "lat": 42.667,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01394",
+   "name": "蘭越",
+   "fullName": "蘭越町",
+   "bureau": "後志",
+   "class": "町",
+   "lon": 140.398,
+   "lat": 42.807,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01395",
+   "name": "ニセコ",
+   "fullName": "ニセコ町",
+   "bureau": "後志",
+   "class": "町",
+   "lon": 140.687,
+   "lat": 42.805,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01396",
+   "name": "真狩",
+   "fullName": "真狩村",
+   "bureau": "後志",
+   "class": "村",
+   "lon": 140.788,
+   "lat": 42.766,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01397",
+   "name": "留寿都",
+   "fullName": "留寿都村",
+   "bureau": "後志",
+   "class": "村",
+   "lon": 140.873,
+   "lat": 42.735,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01398",
+   "name": "喜茂別",
+   "fullName": "喜茂別町",
+   "bureau": "後志",
+   "class": "町",
+   "lon": 140.947,
+   "lat": 42.795,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01399",
+   "name": "京極",
+   "fullName": "京極町",
+   "bureau": "後志",
+   "class": "町",
+   "lon": 140.877,
+   "lat": 42.86,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01400",
+   "name": "倶知安",
+   "fullName": "倶知安町",
+   "bureau": "後志",
+   "class": "町",
+   "lon": 140.755,
+   "lat": 42.901,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": true,
+   "status": "active"
+  },
+  {
+   "code": "01401",
+   "name": "共和",
+   "fullName": "共和町",
+   "bureau": "後志",
+   "class": "町",
+   "lon": 140.615,
+   "lat": 42.986,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01402",
+   "name": "岩内",
+   "fullName": "岩内町",
+   "bureau": "後志",
+   "class": "町",
+   "lon": 140.51,
+   "lat": 42.977,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01403",
+   "name": "泊",
+   "fullName": "泊村",
+   "bureau": "後志",
+   "class": "村",
+   "lon": 140.51,
+   "lat": 43.075,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01404",
+   "name": "神恵内",
+   "fullName": "神恵内村",
+   "bureau": "後志",
+   "class": "村",
+   "lon": 140.435,
+   "lat": 43.14,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01405",
+   "name": "積丹",
+   "fullName": "積丹町",
+   "bureau": "後志",
+   "class": "町",
+   "lon": 140.464,
+   "lat": 43.297,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01406",
+   "name": "古平",
+   "fullName": "古平町",
+   "bureau": "後志",
+   "class": "町",
+   "lon": 140.637,
+   "lat": 43.267,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01407",
+   "name": "仁木",
+   "fullName": "仁木町",
+   "bureau": "後志",
+   "class": "町",
+   "lon": 140.798,
+   "lat": 43.148,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01408",
+   "name": "余市",
+   "fullName": "余市町",
+   "bureau": "後志",
+   "class": "町",
+   "lon": 140.786,
+   "lat": 43.194,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01409",
+   "name": "赤井川",
+   "fullName": "赤井川村",
+   "bureau": "後志",
+   "class": "村",
+   "lon": 140.815,
+   "lat": 43.079,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01209",
+   "name": "夕張",
+   "fullName": "夕張市",
+   "bureau": "空知",
+   "class": "市",
+   "lon": 141.974,
+   "lat": 43.056,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01210",
+   "name": "岩見沢",
+   "fullName": "岩見沢市",
+   "bureau": "空知",
+   "class": "市",
+   "lon": 141.775,
+   "lat": 43.196,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": true,
+   "status": "active"
+  },
+  {
+   "code": "01215",
+   "name": "美唄",
+   "fullName": "美唄市",
+   "bureau": "空知",
+   "class": "市",
+   "lon": 141.853,
+   "lat": 43.331,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01216",
+   "name": "芦別",
+   "fullName": "芦別市",
+   "bureau": "空知",
+   "class": "市",
+   "lon": 142.19,
+   "lat": 43.513,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01218",
+   "name": "赤平",
+   "fullName": "赤平市",
+   "bureau": "空知",
+   "class": "市",
+   "lon": 142.05,
+   "lat": 43.558,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01222",
+   "name": "三笠",
+   "fullName": "三笠市",
+   "bureau": "空知",
+   "class": "市",
+   "lon": 141.875,
+   "lat": 43.246,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01225",
+   "name": "滝川",
+   "fullName": "滝川市",
+   "bureau": "空知",
+   "class": "市",
+   "lon": 141.91,
+   "lat": 43.558,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01226",
+   "name": "砂川",
+   "fullName": "砂川市",
+   "bureau": "空知",
+   "class": "市",
+   "lon": 141.903,
+   "lat": 43.495,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01227",
+   "name": "歌志内",
+   "fullName": "歌志内市",
+   "bureau": "空知",
+   "class": "市",
+   "lon": 142.037,
+   "lat": 43.517,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01228",
+   "name": "深川",
+   "fullName": "深川市",
+   "bureau": "空知",
+   "class": "市",
+   "lon": 142.045,
+   "lat": 43.723,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01423",
+   "name": "南幌",
+   "fullName": "南幌町",
+   "bureau": "空知",
+   "class": "町",
+   "lon": 141.649,
+   "lat": 43.063,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01424",
+   "name": "奈井江",
+   "fullName": "奈井江町",
+   "bureau": "空知",
+   "class": "町",
+   "lon": 141.882,
+   "lat": 43.426,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01425",
+   "name": "上砂川",
+   "fullName": "上砂川町",
+   "bureau": "空知",
+   "class": "町",
+   "lon": 141.98,
+   "lat": 43.483,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01427",
+   "name": "由仁",
+   "fullName": "由仁町",
+   "bureau": "空知",
+   "class": "町",
+   "lon": 141.812,
+   "lat": 42.996,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01428",
+   "name": "長沼",
+   "fullName": "長沼町",
+   "bureau": "空知",
+   "class": "町",
+   "lon": 141.696,
+   "lat": 42.994,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01429",
+   "name": "栗山",
+   "fullName": "栗山町",
+   "bureau": "空知",
+   "class": "町",
+   "lon": 141.786,
+   "lat": 43.058,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01430",
+   "name": "月形",
+   "fullName": "月形町",
+   "bureau": "空知",
+   "class": "町",
+   "lon": 141.658,
+   "lat": 43.337,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01431",
+   "name": "浦臼",
+   "fullName": "浦臼町",
+   "bureau": "空知",
+   "class": "町",
+   "lon": 141.858,
+   "lat": 43.435,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01432",
+   "name": "新十津川",
+   "fullName": "新十津川町",
+   "bureau": "空知",
+   "class": "町",
+   "lon": 141.865,
+   "lat": 43.552,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01433",
+   "name": "妹背牛",
+   "fullName": "妹背牛町",
+   "bureau": "空知",
+   "class": "町",
+   "lon": 141.96,
+   "lat": 43.681,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01434",
+   "name": "秩父別",
+   "fullName": "秩父別町",
+   "bureau": "空知",
+   "class": "町",
+   "lon": 141.969,
+   "lat": 43.78,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01436",
+   "name": "雨竜",
+   "fullName": "雨竜町",
+   "bureau": "空知",
+   "class": "町",
+   "lon": 141.885,
+   "lat": 43.66,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01437",
+   "name": "北竜",
+   "fullName": "北竜町",
+   "bureau": "空知",
+   "class": "町",
+   "lon": 141.877,
+   "lat": 43.735,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01438",
+   "name": "沼田",
+   "fullName": "沼田町",
+   "bureau": "空知",
+   "class": "町",
+   "lon": 141.965,
+   "lat": 43.813,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01204",
+   "name": "旭川",
+   "fullName": "旭川市",
+   "bureau": "上川",
+   "class": "市",
+   "lon": 142.365,
+   "lat": 43.77,
+   "footprint": [
+    2,
+    2
+   ],
+   "bureauSeat": true,
+   "status": "active"
+  },
+  {
+   "code": "01220",
+   "name": "士別",
+   "fullName": "士別市",
+   "bureau": "上川",
+   "class": "市",
+   "lon": 142.386,
+   "lat": 44.179,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01221",
+   "name": "名寄",
+   "fullName": "名寄市",
+   "bureau": "上川",
+   "class": "市",
+   "lon": 142.463,
+   "lat": 44.356,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01229",
+   "name": "富良野",
+   "fullName": "富良野市",
+   "bureau": "上川",
+   "class": "市",
+   "lon": 142.383,
+   "lat": 43.342,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01452",
+   "name": "鷹栖",
+   "fullName": "鷹栖町",
+   "bureau": "上川",
+   "class": "町",
+   "lon": 142.365,
+   "lat": 43.837,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01453",
+   "name": "東神楽",
+   "fullName": "東神楽町",
+   "bureau": "上川",
+   "class": "町",
+   "lon": 142.454,
+   "lat": 43.701,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01454",
+   "name": "当麻",
+   "fullName": "当麻町",
+   "bureau": "上川",
+   "class": "町",
+   "lon": 142.508,
+   "lat": 43.822,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01455",
+   "name": "比布",
+   "fullName": "比布町",
+   "bureau": "上川",
+   "class": "町",
+   "lon": 142.478,
+   "lat": 43.87,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01456",
+   "name": "愛別",
+   "fullName": "愛別町",
+   "bureau": "上川",
+   "class": "町",
+   "lon": 142.579,
+   "lat": 43.902,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01457",
+   "name": "上川",
+   "fullName": "上川町",
+   "bureau": "上川",
+   "class": "町",
+   "lon": 142.775,
+   "lat": 43.849,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01458",
+   "name": "東川",
+   "fullName": "東川町",
+   "bureau": "上川",
+   "class": "町",
+   "lon": 142.508,
+   "lat": 43.694,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01459",
+   "name": "美瑛",
+   "fullName": "美瑛町",
+   "bureau": "上川",
+   "class": "町",
+   "lon": 142.469,
+   "lat": 43.588,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01460",
+   "name": "上富良野",
+   "fullName": "上富良野町",
+   "bureau": "上川",
+   "class": "町",
+   "lon": 142.467,
+   "lat": 43.455,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01461",
+   "name": "中富良野",
+   "fullName": "中富良野町",
+   "bureau": "上川",
+   "class": "町",
+   "lon": 142.427,
+   "lat": 43.409,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01462",
+   "name": "南富良野",
+   "fullName": "南富良野町",
+   "bureau": "上川",
+   "class": "町",
+   "lon": 142.579,
+   "lat": 43.174,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01463",
+   "name": "占冠",
+   "fullName": "占冠村",
+   "bureau": "上川",
+   "class": "村",
+   "lon": 142.4,
+   "lat": 43.01,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01464",
+   "name": "和寒",
+   "fullName": "和寒町",
+   "bureau": "上川",
+   "class": "町",
+   "lon": 142.41,
+   "lat": 44.02,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01465",
+   "name": "剣淵",
+   "fullName": "剣淵町",
+   "bureau": "上川",
+   "class": "町",
+   "lon": 142.372,
+   "lat": 44.096,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01468",
+   "name": "下川",
+   "fullName": "下川町",
+   "bureau": "上川",
+   "class": "町",
+   "lon": 142.638,
+   "lat": 44.301,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01469",
+   "name": "美深",
+   "fullName": "美深町",
+   "bureau": "上川",
+   "class": "町",
+   "lon": 142.348,
+   "lat": 44.483,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01470",
+   "name": "音威子府",
+   "fullName": "音威子府村",
+   "bureau": "上川",
+   "class": "村",
+   "lon": 142.265,
+   "lat": 44.727,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01471",
+   "name": "中川",
+   "fullName": "中川町",
+   "bureau": "上川",
+   "class": "町",
+   "lon": 142.071,
+   "lat": 44.816,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01472",
+   "name": "幌加内",
+   "fullName": "幌加内町",
+   "bureau": "上川",
+   "class": "町",
+   "lon": 142.15,
+   "lat": 44.005,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01212",
+   "name": "留萌",
+   "fullName": "留萌市",
+   "bureau": "留萌",
+   "class": "市",
+   "lon": 141.637,
+   "lat": 43.941,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": true,
+   "status": "active"
+  },
+  {
+   "code": "01481",
+   "name": "増毛",
+   "fullName": "増毛町",
+   "bureau": "留萌",
+   "class": "町",
+   "lon": 141.523,
+   "lat": 43.856,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01482",
+   "name": "小平",
+   "fullName": "小平町",
+   "bureau": "留萌",
+   "class": "町",
+   "lon": 141.663,
+   "lat": 44.02,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01483",
+   "name": "苫前",
+   "fullName": "苫前町",
+   "bureau": "留萌",
+   "class": "町",
+   "lon": 141.653,
+   "lat": 44.29,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01484",
+   "name": "羽幌",
+   "fullName": "羽幌町",
+   "bureau": "留萌",
+   "class": "町",
+   "lon": 141.702,
+   "lat": 44.361,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01485",
+   "name": "初山別",
+   "fullName": "初山別村",
+   "bureau": "留萌",
+   "class": "村",
+   "lon": 141.75,
+   "lat": 44.55,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01486",
+   "name": "遠別",
+   "fullName": "遠別町",
+   "bureau": "留萌",
+   "class": "町",
+   "lon": 141.795,
+   "lat": 44.719,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01487",
+   "name": "天塩",
+   "fullName": "天塩町",
+   "bureau": "留萌",
+   "class": "町",
+   "lon": 141.741,
+   "lat": 44.887,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01214",
+   "name": "稚内",
+   "fullName": "稚内市",
+   "bureau": "宗谷",
+   "class": "市",
+   "lon": 141.674,
+   "lat": 45.416,
+   "footprint": [
+    2,
+    2
+   ],
+   "bureauSeat": true,
+   "status": "active"
+  },
+  {
+   "code": "01511",
+   "name": "猿払",
+   "fullName": "猿払村",
+   "bureau": "宗谷",
+   "class": "村",
+   "lon": 142.293,
+   "lat": 45.339,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01512",
+   "name": "浜頓別",
+   "fullName": "浜頓別町",
+   "bureau": "宗谷",
+   "class": "町",
+   "lon": 142.281,
+   "lat": 45.125,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01513",
+   "name": "中頓別",
+   "fullName": "中頓別町",
+   "bureau": "宗谷",
+   "class": "町",
+   "lon": 142.287,
+   "lat": 44.968,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01514",
+   "name": "枝幸",
+   "fullName": "枝幸町",
+   "bureau": "宗谷",
+   "class": "町",
+   "lon": 142.578,
+   "lat": 44.939,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01516",
+   "name": "豊富",
+   "fullName": "豊富町",
+   "bureau": "宗谷",
+   "class": "町",
+   "lon": 141.777,
+   "lat": 45.103,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01517",
+   "name": "礼文",
+   "fullName": "礼文町",
+   "bureau": "宗谷",
+   "class": "町",
+   "lon": 141.045,
+   "lat": 45.303,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01518",
+   "name": "利尻",
+   "fullName": "利尻町",
+   "bureau": "宗谷",
+   "class": "町",
+   "lon": 141.138,
+   "lat": 45.185,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01519",
+   "name": "利尻富士",
+   "fullName": "利尻富士町",
+   "bureau": "宗谷",
+   "class": "町",
+   "lon": 141.234,
+   "lat": 45.242,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01520",
+   "name": "幌延",
+   "fullName": "幌延町",
+   "bureau": "宗谷",
+   "class": "町",
+   "lon": 141.856,
+   "lat": 45.014,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01208",
+   "name": "北見",
+   "fullName": "北見市",
+   "bureau": "オホーツク",
+   "class": "市",
+   "lon": 143.895,
+   "lat": 43.803,
+   "footprint": [
+    2,
+    2
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01211",
+   "name": "網走",
+   "fullName": "網走市",
+   "bureau": "オホーツク",
+   "class": "市",
+   "lon": 144.273,
+   "lat": 44.021,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": true,
+   "status": "active"
+  },
+  {
+   "code": "01219",
+   "name": "紋別",
+   "fullName": "紋別市",
+   "bureau": "オホーツク",
+   "class": "市",
+   "lon": 143.354,
+   "lat": 44.356,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01543",
+   "name": "美幌",
+   "fullName": "美幌町",
+   "bureau": "オホーツク",
+   "class": "町",
+   "lon": 144.164,
+   "lat": 43.823,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01544",
+   "name": "津別",
+   "fullName": "津別町",
+   "bureau": "オホーツク",
+   "class": "町",
+   "lon": 144.021,
+   "lat": 43.7,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01545",
+   "name": "斜里",
+   "fullName": "斜里町",
+   "bureau": "オホーツク",
+   "class": "町",
+   "lon": 144.664,
+   "lat": 43.912,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01546",
+   "name": "清里",
+   "fullName": "清里町",
+   "bureau": "オホーツク",
+   "class": "町",
+   "lon": 144.591,
+   "lat": 43.828,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01547",
+   "name": "小清水",
+   "fullName": "小清水町",
+   "bureau": "オホーツク",
+   "class": "町",
+   "lon": 144.462,
+   "lat": 43.856,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01549",
+   "name": "訓子府",
+   "fullName": "訓子府町",
+   "bureau": "オホーツク",
+   "class": "町",
+   "lon": 143.735,
+   "lat": 43.72,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01550",
+   "name": "置戸",
+   "fullName": "置戸町",
+   "bureau": "オホーツク",
+   "class": "町",
+   "lon": 143.607,
+   "lat": 43.678,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01552",
+   "name": "佐呂間",
+   "fullName": "佐呂間町",
+   "bureau": "オホーツク",
+   "class": "町",
+   "lon": 143.772,
+   "lat": 44.019,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01555",
+   "name": "遠軽",
+   "fullName": "遠軽町",
+   "bureau": "オホーツク",
+   "class": "町",
+   "lon": 143.527,
+   "lat": 44.062,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01559",
+   "name": "湧別",
+   "fullName": "湧別町",
+   "bureau": "オホーツク",
+   "class": "町",
+   "lon": 143.617,
+   "lat": 44.209,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01560",
+   "name": "滝上",
+   "fullName": "滝上町",
+   "bureau": "オホーツク",
+   "class": "町",
+   "lon": 143.081,
+   "lat": 44.19,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01561",
+   "name": "興部",
+   "fullName": "興部町",
+   "bureau": "オホーツク",
+   "class": "町",
+   "lon": 143.115,
+   "lat": 44.47,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01562",
+   "name": "西興部",
+   "fullName": "西興部村",
+   "bureau": "オホーツク",
+   "class": "村",
+   "lon": 142.944,
+   "lat": 44.324,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01563",
+   "name": "雄武",
+   "fullName": "雄武町",
+   "bureau": "オホーツク",
+   "class": "町",
+   "lon": 142.962,
+   "lat": 44.581,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01564",
+   "name": "大空",
+   "fullName": "大空町",
+   "bureau": "オホーツク",
+   "class": "町",
+   "lon": 144.137,
+   "lat": 43.917,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01205",
+   "name": "室蘭",
+   "fullName": "室蘭市",
+   "bureau": "胆振",
+   "class": "市",
+   "lon": 140.974,
+   "lat": 42.315,
+   "footprint": [
+    2,
+    2
+   ],
+   "bureauSeat": true,
+   "status": "active"
+  },
+  {
+   "code": "01213",
+   "name": "苫小牧",
+   "fullName": "苫小牧市",
+   "bureau": "胆振",
+   "class": "市",
+   "lon": 141.606,
+   "lat": 42.634,
+   "footprint": [
+    2,
+    2
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01230",
+   "name": "登別",
+   "fullName": "登別市",
+   "bureau": "胆振",
+   "class": "市",
+   "lon": 141.107,
+   "lat": 42.413,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01233",
+   "name": "伊達",
+   "fullName": "伊達市",
+   "bureau": "胆振",
+   "class": "市",
+   "lon": 140.865,
+   "lat": 42.472,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01571",
+   "name": "豊浦",
+   "fullName": "豊浦町",
+   "bureau": "胆振",
+   "class": "町",
+   "lon": 140.699,
+   "lat": 42.581,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01575",
+   "name": "壮瞥",
+   "fullName": "壮瞥町",
+   "bureau": "胆振",
+   "class": "町",
+   "lon": 140.909,
+   "lat": 42.552,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01578",
+   "name": "白老",
+   "fullName": "白老町",
+   "bureau": "胆振",
+   "class": "町",
+   "lon": 141.356,
+   "lat": 42.551,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01581",
+   "name": "厚真",
+   "fullName": "厚真町",
+   "bureau": "胆振",
+   "class": "町",
+   "lon": 141.879,
+   "lat": 42.723,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01584",
+   "name": "洞爺湖",
+   "fullName": "洞爺湖町",
+   "bureau": "胆振",
+   "class": "町",
+   "lon": 140.766,
+   "lat": 42.552,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01585",
+   "name": "安平",
+   "fullName": "安平町",
+   "bureau": "胆振",
+   "class": "町",
+   "lon": 141.826,
+   "lat": 42.762,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01586",
+   "name": "むかわ",
+   "fullName": "むかわ町",
+   "bureau": "胆振",
+   "class": "町",
+   "lon": 141.929,
+   "lat": 42.578,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01601",
+   "name": "日高",
+   "fullName": "日高町",
+   "bureau": "日高",
+   "class": "町",
+   "lon": 142.436,
+   "lat": 42.478,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01602",
+   "name": "平取",
+   "fullName": "平取町",
+   "bureau": "日高",
+   "class": "町",
+   "lon": 142.126,
+   "lat": 42.575,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01604",
+   "name": "新冠",
+   "fullName": "新冠町",
+   "bureau": "日高",
+   "class": "町",
+   "lon": 142.313,
+   "lat": 42.352,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01607",
+   "name": "浦河",
+   "fullName": "浦河町",
+   "bureau": "日高",
+   "class": "町",
+   "lon": 142.768,
+   "lat": 42.168,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": true,
+   "status": "active"
+  },
+  {
+   "code": "01608",
+   "name": "様似",
+   "fullName": "様似町",
+   "bureau": "日高",
+   "class": "町",
+   "lon": 142.937,
+   "lat": 42.126,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01609",
+   "name": "えりも",
+   "fullName": "えりも町",
+   "bureau": "日高",
+   "class": "町",
+   "lon": 143.146,
+   "lat": 42.014,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01610",
+   "name": "新ひだか",
+   "fullName": "新ひだか町",
+   "bureau": "日高",
+   "class": "町",
+   "lon": 142.368,
+   "lat": 42.337,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01207",
+   "name": "帯広",
+   "fullName": "帯広市",
+   "bureau": "十勝",
+   "class": "市",
+   "lon": 143.196,
+   "lat": 42.924,
+   "footprint": [
+    2,
+    2
+   ],
+   "bureauSeat": true,
+   "status": "active"
+  },
+  {
+   "code": "01631",
+   "name": "音更",
+   "fullName": "音更町",
+   "bureau": "十勝",
+   "class": "町",
+   "lon": 143.196,
+   "lat": 42.996,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01632",
+   "name": "士幌",
+   "fullName": "士幌町",
+   "bureau": "十勝",
+   "class": "町",
+   "lon": 143.246,
+   "lat": 43.166,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01633",
+   "name": "上士幌",
+   "fullName": "上士幌町",
+   "bureau": "十勝",
+   "class": "町",
+   "lon": 143.298,
+   "lat": 43.233,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01634",
+   "name": "鹿追",
+   "fullName": "鹿追町",
+   "bureau": "十勝",
+   "class": "町",
+   "lon": 142.988,
+   "lat": 43.096,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01635",
+   "name": "新得",
+   "fullName": "新得町",
+   "bureau": "十勝",
+   "class": "町",
+   "lon": 142.827,
+   "lat": 43.076,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01636",
+   "name": "清水",
+   "fullName": "清水町",
+   "bureau": "十勝",
+   "class": "町",
+   "lon": 142.883,
+   "lat": 43.006,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01637",
+   "name": "芽室",
+   "fullName": "芽室町",
+   "bureau": "十勝",
+   "class": "町",
+   "lon": 143.052,
+   "lat": 42.91,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01638",
+   "name": "中札内",
+   "fullName": "中札内村",
+   "bureau": "十勝",
+   "class": "村",
+   "lon": 143.145,
+   "lat": 42.7,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01639",
+   "name": "更別",
+   "fullName": "更別村",
+   "bureau": "十勝",
+   "class": "村",
+   "lon": 143.184,
+   "lat": 42.649,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01641",
+   "name": "大樹",
+   "fullName": "大樹町",
+   "bureau": "十勝",
+   "class": "町",
+   "lon": 143.279,
+   "lat": 42.496,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01642",
+   "name": "広尾",
+   "fullName": "広尾町",
+   "bureau": "十勝",
+   "class": "町",
+   "lon": 143.313,
+   "lat": 42.286,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01643",
+   "name": "幕別",
+   "fullName": "幕別町",
+   "bureau": "十勝",
+   "class": "町",
+   "lon": 143.356,
+   "lat": 42.91,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01644",
+   "name": "池田",
+   "fullName": "池田町",
+   "bureau": "十勝",
+   "class": "町",
+   "lon": 143.443,
+   "lat": 42.926,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01645",
+   "name": "豊頃",
+   "fullName": "豊頃町",
+   "bureau": "十勝",
+   "class": "町",
+   "lon": 143.526,
+   "lat": 42.807,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01646",
+   "name": "本別",
+   "fullName": "本別町",
+   "bureau": "十勝",
+   "class": "町",
+   "lon": 143.61,
+   "lat": 43.125,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01647",
+   "name": "足寄",
+   "fullName": "足寄町",
+   "bureau": "十勝",
+   "class": "町",
+   "lon": 143.415,
+   "lat": 43.242,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01648",
+   "name": "陸別",
+   "fullName": "陸別町",
+   "bureau": "十勝",
+   "class": "町",
+   "lon": 143.74,
+   "lat": 43.47,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01649",
+   "name": "浦幌",
+   "fullName": "浦幌町",
+   "bureau": "十勝",
+   "class": "町",
+   "lon": 143.66,
+   "lat": 42.809,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01206",
+   "name": "釧路",
+   "fullName": "釧路市",
+   "bureau": "釧路",
+   "class": "市",
+   "lon": 144.381,
+   "lat": 42.985,
+   "footprint": [
+    2,
+    2
+   ],
+   "bureauSeat": true,
+   "status": "active"
+  },
+  {
+   "code": "01661",
+   "name": "釧路町",
+   "fullName": "釧路町",
+   "bureau": "釧路",
+   "class": "町",
+   "lon": 144.457,
+   "lat": 43.016,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01662",
+   "name": "厚岸",
+   "fullName": "厚岸町",
+   "bureau": "釧路",
+   "class": "町",
+   "lon": 144.847,
+   "lat": 43.05,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01663",
+   "name": "浜中",
+   "fullName": "浜中町",
+   "bureau": "釧路",
+   "class": "町",
+   "lon": 145.128,
+   "lat": 43.088,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01664",
+   "name": "標茶",
+   "fullName": "標茶町",
+   "bureau": "釧路",
+   "class": "町",
+   "lon": 144.605,
+   "lat": 43.301,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01665",
+   "name": "弟子屈",
+   "fullName": "弟子屈町",
+   "bureau": "釧路",
+   "class": "町",
+   "lon": 144.463,
+   "lat": 43.487,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01667",
+   "name": "鶴居",
+   "fullName": "鶴居村",
+   "bureau": "釧路",
+   "class": "村",
+   "lon": 144.322,
+   "lat": 43.229,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01668",
+   "name": "白糠",
+   "fullName": "白糠町",
+   "bureau": "釧路",
+   "class": "町",
+   "lon": 144.07,
+   "lat": 42.958,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01223",
+   "name": "根室",
+   "fullName": "根室市",
+   "bureau": "根室",
+   "class": "市",
+   "lon": 145.583,
+   "lat": 43.33,
+   "footprint": [
+    2,
+    2
+   ],
+   "bureauSeat": true,
+   "status": "active"
+  },
+  {
+   "code": "01691",
+   "name": "別海",
+   "fullName": "別海町",
+   "bureau": "根室",
+   "class": "町",
+   "lon": 145.116,
+   "lat": 43.391,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01692",
+   "name": "中標津",
+   "fullName": "中標津町",
+   "bureau": "根室",
+   "class": "町",
+   "lon": 144.981,
+   "lat": 43.557,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01693",
+   "name": "標津",
+   "fullName": "標津町",
+   "bureau": "根室",
+   "class": "町",
+   "lon": 145.13,
+   "lat": 43.661,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01694",
+   "name": "羅臼",
+   "fullName": "羅臼町",
+   "bureau": "根室",
+   "class": "町",
+   "lon": 145.191,
+   "lat": 44.02,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "active"
+  },
+  {
+   "code": "01695",
+   "name": "色丹村",
+   "fullName": "色丹村",
+   "bureau": "根室",
+   "class": "村",
+   "lon": 146.75,
+   "lat": 43.85,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "northern_territories"
+  },
+  {
+   "code": "01696",
+   "name": "泊村",
+   "fullName": "泊村",
+   "bureau": "根室",
+   "class": "村",
+   "lon": 145.56,
+   "lat": 43.74,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "northern_territories"
+  },
+  {
+   "code": "01697",
+   "name": "留夜別村",
+   "fullName": "留夜別村",
+   "bureau": "根室",
+   "class": "村",
+   "lon": 146.02,
+   "lat": 44.3,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "northern_territories"
+  },
+  {
+   "code": "01698",
+   "name": "留別村",
+   "fullName": "留別村",
+   "bureau": "根室",
+   "class": "村",
+   "lon": 147.19,
+   "lat": 44.85,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "northern_territories"
+  },
+  {
+   "code": "01699",
+   "name": "紗那村",
+   "fullName": "紗那村",
+   "bureau": "根室",
+   "class": "村",
+   "lon": 147.87,
+   "lat": 45.1,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "northern_territories"
+  },
+  {
+   "code": "01700",
+   "name": "蘂取村",
+   "fullName": "蘂取村",
+   "bureau": "根室",
+   "class": "村",
+   "lon": 148.4,
+   "lat": 45.45,
+   "footprint": [
+    1,
+    1
+   ],
+   "bureauSeat": false,
+   "status": "northern_territories"
+  }
+ ],
+ "counts": {
+  "active": 179,
+  "northern_territories": 6
+ }
+}
