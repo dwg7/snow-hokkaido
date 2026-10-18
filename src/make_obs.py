@@ -21,7 +21,7 @@ R = 6378137.0
 ORIGIN = math.pi * R
 CELL_M = 2 * ORIGIN / 2**Z
 STAC = "https://earth-search.aws.element84.com/v1"
-COLLECTION = "sentinel-2-l2a"
+COLLECTION = "sentinel-2-c1-l2a"  # canonical (docs/timeseries-spec.md): COG metadata carries scale/offset
 ALGO_VERSION = "algo-v1-dev"
 NDSI_THRESHOLD = 0.42  # Sen2Cor value; no extra reflectance condition yet
 
@@ -37,16 +37,16 @@ def stac_get(path):
         return json.load(r)
 
 
-def find_item(date):
+def find_item(date, collection):
     body = json.dumps({
-        "collections": [COLLECTION], "bbox": [142.73, 43.58, 143.44, 44.09],
+        "collections": [collection], "bbox": [142.73, 43.58, 143.44, 44.09],
         "datetime": f"{date}T00:00:00Z/{date}T23:59:59Z", "limit": 20,
     }).encode()
     req = urllib.request.Request(f"{STAC}/search", body, {"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=60) as r:
         feats = json.load(r)["features"]
     if not feats:
-        raise SystemExit(f"no {COLLECTION} scene on {date}")
+        raise SystemExit(f"no {collection} scene on {date}")
     return min(feats, key=lambda f: f["properties"].get("eo:cloud_cover", 100))
 
 
@@ -64,20 +64,12 @@ def main():
     ap.add_argument("--item", help="STAC item id (default: lowest-cloud scene on the date)")
     ap.add_argument("--tile", default="9/459/186")
     ap.add_argument("--out", default="ledger")
-    ap.add_argument("--apply-stac-offset", action="store_true")
+    ap.add_argument("--collection", default=COLLECTION, choices=["sentinel-2-l2a", "sentinel-2-c1-l2a"])
     a = ap.parse_args()
 
-    item = stac_get(f"/collections/{COLLECTION}/items/{a.item}") if a.item else find_item(a.date)
+    item = stac_get(f"/collections/{a.collection}/items/{a.item}") if a.item else find_item(a.date, a.collection)
     props = item["properties"]
     hrefs = {k: item["assets"][k]["href"] for k in ("green", "swir16", "scl")}
-    # The COGs carry no scale/offset tags. STAC raster:bands claims offset -0.1, but on the 2026-10-18
-    # scene the DNs are not offset (forest B03 median DN ~250 would be negative reflectance), so the
-    # default is scale only. --apply-stac-offset restores the STAC value; see docs/stage1-checks.md.
-    rb = {k: item["assets"][k]["raster:bands"][0] for k in ("green", "swir16")}
-    g_scale, s_scale = rb["green"]["scale"], rb["swir16"]["scale"]
-    g_off = rb["green"]["offset"] if a.apply_stac_offset else 0.0
-    s_off = rb["swir16"]["offset"] if a.apply_stac_offset else 0.0
-
     _, tx, ty = map(int, a.tile.split("/"))
     x0, y0, n, west, south, east, north = tile_bounds_3857(tx, ty)
 
@@ -99,12 +91,16 @@ def main():
             wt = g.window_transform(win)
             b = rasterio.windows.bounds(win, g.transform)
             shape = (int(win.height), int(win.width))
+            # Scale/offset come from each file, not from STAC: the legacy l2a COGs carry none (DN = reflectance*10000
+            # with the baseline offset already removed) while c1 COGs carry offset -0.1; STAC claims -0.1 for both.
+            g_scale, g_off = g.scales[0], g.offsets[0]
             green = g.read(1, window=win).astype("float32")
             green_nodata = g.read(1, window=win) == (g.nodata if g.nodata is not None else 0)
         with rasterio.open(hrefs["swir16"]) as s:
             w = from_bounds(*b, s.transform)
             swir_raw = s.read(1, window=w, out_shape=shape, resampling=Resampling.bilinear,
                               boundless=True, fill_value=0)
+            s_scale, s_off = s.scales[0], s.offsets[0]
             swir = swir_raw.astype("float32")
         with rasterio.open(hrefs["scl"]) as c:
             w = from_bounds(*b, c.transform)
@@ -123,6 +119,12 @@ def main():
     scl_snow = scl == 11
     print("pixel check: NDSI snow", int(snow.sum()), "SCL=11", int(scl_snow.sum()), "both", int((snow & scl_snow).sum()))
     green_c = clear & ~snow
+
+    # QC recorded in the obs tags (docs/timeseries-spec.md, section 6): a wrong offset shows up as many
+    # negative B03 reflectances; where snow exists, NDSI snow should mostly agree with SCL=11.
+    valid_g = ~green_nodata
+    qc_neg_b03 = float(((green < 0) & valid_g).sum() / max(int(valid_g.sum()), 1))
+    qc_snow_in_scl = float((snow & scl_snow).sum() / snow.sum()) if snow.sum() >= 1000 else None
 
     # pixel centers -> cell index
     rows, cols = np.indices(shape)
@@ -167,12 +169,15 @@ def main():
             dst.write(arr, i)
             dst.set_band_description(i, name)
         dst.update_tags(
-            tile=a.tile, zoom=str(Z), sensor="s2", scene=item["id"], stac_collection=COLLECTION,
+            tile=a.tile, zoom=str(Z), sensor="s2", scene=item["id"], stac_collection=a.collection,
             obs_start_utc=props["datetime"], obs_end_utc=props["datetime"],
             sun_elevation=str(props.get("view:sun_elevation")), algo_version=ALGO_VERSION,
             ndsi_threshold=str(NDSI_THRESHOLD), processing_baseline=str(props.get("s2:processing_baseline")),
             band_offsets=f"green={g_off},swir16={s_off}",
-            note="reflectance offset not applied unless band_offsets nonzero",
+            note="scale/offset read from the COG files",
+            datatake_id=str(props.get("s2:datatake_id")), product_uri=str(props.get("s2:product_uri")),
+            qc_neg_b03_frac=f"{qc_neg_b03:.4f}",
+            qc_ndsi_snow_in_scl_frac="na" if qc_snow_in_scl is None else f"{qc_snow_in_scl:.4f}",
         )
 
     vals, cnt = np.unique(cls, return_counts=True)

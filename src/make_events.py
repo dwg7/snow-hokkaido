@@ -11,6 +11,8 @@ import rasterio
 NDSI_THRESHOLD = 0.42
 MARGIN_DELTA = 0.05  # provisional: |NDSI - threshold| <= delta is "marginal"
 STATIC_LAKE, STATIC_SEA, STATIC_CANOPY = 2, 4, 1  # static_flags bits
+QC_REFLECTANCE = 1  # qc_flags bit0: B03 negative-reflectance share above the (provisional) threshold
+NEG_B03_MAX = 0.25  # provisional; set after checking more scenes
 
 COUNT_COLS = ["n_land", "n_scanned", "n_cloud", "n_shadow", "n_clear", "n_clear_canopy",
               "n_clear_valid", "n_snow", "n_marginal", "n_nosnow"]
@@ -76,7 +78,7 @@ def main():
         "sun_elev_deg": np.float32(tags["sun_elevation"]),
         "sources": [tags["scene"]],
         "cell_zoom": np.uint8(int(tags["zoom"])),
-        "qc_flags": np.uint16(0),
+        "qc_flags": np.uint16(QC_REFLECTANCE if float(tags.get("qc_neg_b03_frac", 0)) > NEG_B03_MAX else 0),
         "algo_version": tags["algo_version"],
         "superseded_by": None,
         "processed_at": pd.Timestamp(datetime.now(timezone.utc)),
