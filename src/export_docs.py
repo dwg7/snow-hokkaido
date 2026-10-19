@@ -41,7 +41,8 @@ def main():
     ev = pd.read_parquet(ev_path)
     as_of_utc = ev["obs_start_utc"].iloc[0]
     as_of = as_of_utc.tz_convert("Asia/Tokyo").strftime("%Y-%m-%d %H:%M JST")
-    scene = ev["sources"].iloc[0][0]
+    n_gran = len(ev["sources"].iloc[0])
+    scene = f"{n_gran} granules"  # keep asOf short; the full ids are in events.sources
 
     series = {
         "snow_rate": ("積雪率 (確認できたセル中)", "n_snow / n_clear_valid"),
@@ -73,7 +74,7 @@ def main():
         (out / "series" / f"{key}.json").write_text(json.dumps(doc, ensure_ascii=False, indent=1))
 
     # class raster -> RGBA PNG, with geographic corners
-    obs_path = sorted(glob.glob(f"{a.ledger}/obs/season=*/*_s2.tif"))[-1]
+    obs_path = sorted(glob.glob(f"{a.ledger}/obs/season=*/*/*/459-186.tif"))[-1]  # stage-1 tile, latest pass
     with rasterio.open(obs_path) as d:
         cls = d.read(1)
         l, b, r_, t = d.bounds

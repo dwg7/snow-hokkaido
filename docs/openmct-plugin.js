@@ -48,7 +48,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
   function rootView(host) {
     host.appendChild(el('h2', 'sh-h', 'snow-hokkaido'));
     host.appendChild(el('p', 'sh-p', '北海道の積雪を、雲で見えなかったことも含めて記録する台帳の計器盤。左のツリーから計器を選んでください。'));
-    host.appendChild(el('p', 'sh-p', '現在は段階1 (XYZタイル 9/459/186、大雪山系を含む約56 km四方) の1シーンのみ。ほかの市町村は「無データ」です。'));
+    host.appendChild(el('p', 'sh-p', '現在は2026-10-18の1パス(北海道の広い範囲を1回で撮影した1回分)の集計です。写真に写らなかった市町村は「無データ」です。地図の計器のセル表示は、大雪山系を含む1タイル(約56 km四方)だけです。'));
     fetchJson('stage1.json').then((m) => {
       host.appendChild(el('p', 'sh-p sh-muted', '観測: ' + m.asOf + ' / ' + m.scene + ' / ' + m.algo_version + ' (暫定の判定規則)'));
     }).catch(() => {});
@@ -112,7 +112,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
         mode: 'region', title: name, includeNorthernTerritoriesVillages: true
       });
       state.map.setSeries(series);
-      const note = el('div', 'sh-tabular-note', '値があるのは、段階1の範囲に入る市町村だけです (それ以外は無データ)。範囲に一部だけ入る市町村は、「見えた割合」と「走査できた割合」が市町村全体に対する割合なので小さくなります。積雪率と雲の割合は、範囲内のセルだけの割合です。');
+      const note = el('div', 'sh-tabular-note', '値があるのは、この1回の撮影に写った市町村です (写らなかった市町村は無データ)。一部しか写らなかった市町村は、「見えた割合」と「走査できた割合」が市町村全体に対する割合なので小さくなります。積雪率と雲の割合は、写った範囲だけの割合です。');
       host.appendChild(note);
     }).catch((err) => { host.appendChild(el('p', 'sh-p', '読み込みに失敗: ' + err.message)); });
   }

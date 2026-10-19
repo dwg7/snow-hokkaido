@@ -3,7 +3,7 @@
 **北海道に雪がつもっていく様子を、人工衛星の写真から、毎日記録していくプロジェクトです。**
 A daily, cloud-aware snow-cover ledger for Hokkaido, built on Sentinel-2 COGs and XYZ-tile cells, aggregated by municipality.
 
-> いまの状態: **試作の第1段階**です。大雪山を含む約56 km四方(1つのタイル)と、衛星写真1枚(2026-10-18)だけで動いています。北海道全体にはまだ広げていません。
+> いまの状態: **試作の途中**です。2026-10-18の衛星写真1回分を、北海道の広い範囲(168市町村)で集計できています。毎日の自動追加と、過去の日付に遡る表示は、まだです。地図のセル表示は、大雪山を含む1タイルだけです。
 
 ## まず見てみよう
 
@@ -30,8 +30,8 @@ A daily, cloud-aware snow-cover ledger for Hokkaido, built on Sentinel-2 COGs an
 
 ```bash
 just cellmap                              # 市町村のラベルを112mの区画(セル)に割り当てる
-just obs 2026-10-18                       # 衛星写真から、セルごとの 緑/雪/雲/影 を作る
-just events ledger/obs/season=2026/2026-10-18_s2.tif   # 市町村ごとに数える
+just obs 2026-10-18                       # その日(日本時間)の衛星写真から、セルごとの 緑/雪/雲/影 を作る(全域で約20分)
+just events ledger/obs/season=2026/2026-10-18/<パスの名前>   # 市町村ごとに数える(パスのフォルダを渡す)
 just test                                 # 数え方が矛盾していないか自動で検算する
 just docs-data                            # 表示用の軽いデータを作る
 ```

@@ -1,7 +1,7 @@
 """Build events/season=YYYY/part-*.parquet: one row per municipality per obs file (obs x cellmap GROUP BY)."""
 import argparse
 import hashlib
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import numpy as np
@@ -62,7 +62,7 @@ def build_events(cls, ndsi_q, muni_index, flags, master, meta):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--obs", required=True, nargs="+", help="obs files of one pass")
+    ap.add_argument("--obs", required=True, nargs="+", help="obs files of one pass, or the pass directory")
     ap.add_argument("--cellmap", default="ledger/grid/cellmap.tif")
     ap.add_argument("--master", default="ledger/muni/master.parquet")
     ap.add_argument("--out", default="ledger")
@@ -72,13 +72,16 @@ def main():
         muni_index, flags = d.read(1), d.read(2)
         cm_tf, cm_shape = d.transform, d.shape
     master = pd.read_parquet(a.master)
+    paths = []
+    for p in a.obs:
+        paths += sorted(Path(p).rglob("*.tif")) if Path(p).is_dir() else [Path(p)]
     cls = np.zeros(cm_shape, np.uint8)
     ndsi_q = np.full(cm_shape, 255, np.uint8)
     tags, scenes, starts, ends = None, [], [], []
-    for path in a.obs:  # obs files of one pass (one per z9 tile); everything else stays class 0
+    for path in paths:  # obs files of one pass (one per z9 tile); everything else stays class 0
         with rasterio.open(path) as d:
             t = d.tags()
-            scenes.append(t["scene"]); starts.append(t["obs_start_utc"]); ends.append(t["obs_end_utc"])
+            scenes.extend(t["scene"].split(",")); starts.append(t["obs_start_utc"]); ends.append(t["obs_end_utc"])
             w = from_bounds(*d.bounds, cm_tf)
             r0, c0 = round(w.row_off), round(w.col_off)
             cls[r0:r0 + d.height, c0:c0 + d.width] = d.read(1)
@@ -94,7 +97,7 @@ def main():
         "obs_start_utc": min(pd.Timestamp(x) for x in starts),
         "obs_end_utc": max(pd.Timestamp(x) for x in ends),
         "sun_elev_deg": np.float32(tags["sun_elevation"]),
-        "sources": sorted(scenes),
+        "sources": sorted(set(scenes)),
         "cell_zoom": np.uint8(int(tags["zoom"])),
         "qc_flags": np.uint16(QC_REFLECTANCE if float(tags.get("qc_neg_b03_frac", 0)) > NEG_B03_MAX else 0),
         "algo_version": tags["algo_version"],
@@ -107,10 +110,11 @@ def main():
     for c in COUNT_COLS:
         df[c] = df[c].astype("uint32")
 
-    season = Path(a.obs[0]).parent.name
+    season = next(part for part in paths[0].parts if part.startswith("season="))
     out = Path(a.out) / "events" / season
     out.mkdir(parents=True, exist_ok=True)
-    path = out / f"part-{Path(a.obs[0]).stem}.parquet"
+    day = meta["obs_start_utc"].astimezone(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
+    path = out / f"part-{day}_{tags['datatake_id']}.parquet"
     df.to_parquet(path, index=False)
     print(df[["muni_code"] + COUNT_COLS].to_string())
     print("wrote", path)
