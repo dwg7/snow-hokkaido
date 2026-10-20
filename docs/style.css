@@ -32,3 +32,6 @@ span.sh-legend-cell { height: auto; }
 .sh-table { border-collapse: collapse; margin: 8px 0; width: 100%; font-size: 12.5px; }
 .sh-table th, .sh-table td { border: 1px solid #3a3a37; padding: 4px 8px; text-align: left; vertical-align: top; }
 .sh-table th { background: #2c2c2a; }
+.sh-ts-row { display: flex; align-items: center; gap: 10px; padding: 4px 14px; font-size: 12px; }
+.sh-ts-row .sh-slider { flex: 1; margin: 0; }
+.sh-ts-lab { font-variant-numeric: tabular-nums; min-width: 6.5em; }

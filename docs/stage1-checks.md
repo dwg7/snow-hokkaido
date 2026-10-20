@@ -118,3 +118,14 @@ Query: bbox 142.73,43.58,143.44,44.09; datetime 2026-09-01..2026-10-18.
 - Etorofu: events exist for Rubetsu (01698), Shana (01699) and Shibetoro (01700) on 11 different days; e.g. 10-04 Shibetoro scanned 100% with 3-4% cloud, 10-09 scanned 100% with 6% cloud and 39 snow cells. Days over Etorofu are often cloudy (cloud 99-100% on 10-11, 10-14, 10-17, 10-19). Coverage by two UTM zones needed no special handling.
 - Days with only 3 tile files (10-09, 10-14, 10-19) are passes that touch the east of Hokkaido only.
 - Per-date PMTiles are no longer tracked in git (`docs/data/view/` is ignored); they live on Source Cooperative.
+
+## Etorofu on the map (visual check)
+
+- Opened with `?center=148.5,45.3&zoom=9` (new link option of the map instrument) in observed mode, 2026-10-09: the land cells of north-eastern Etorofu (around Shibetoro-dake) follow the coastline of the basemap; the sea stays unpainted; shadow and cloud cells appear as small purple and white patches. A wider view (`?center=147.8,45.0&zoom=8`, last-known mode, 2026-10-20) shows the island's land cells with unknown (transparent) holes where clouds hid the ground on every pass so far. Looked at by eye in the embedded browser only.
+
+## Per-day series for the four rate instruments
+
+- `make_state.py` also writes `derived/daily/season=YYYY.parquet`: for each observed JST day, the events-style counts of that day's observation (one observation per cell per day, the winning pass also supplies `ndsi_q`), 1,437 rows for 20 days. `export_docs.py` turns it into `series/{snow_rate,cloud_rate,visible_rate,scan_rate}_ts.json` (about 20 KB each, 195 codes including the Sapporo city row; `null` where a municipality was not scanned that day). The four tabular instruments got a date slider.
+- Definitions match the single-date series (snow rate = `n_snow / n_clear_valid`, which leaves out marginal cells). Spot check: Kamikawa 2026-10-18 gives 2.9% in both the per-pass series and the per-day series (one pass that day).
+- Tests: `tests/test_export_ts.py` (alignment, nulls, Sapporo sum). Looked at in the embedded browser only (the 2026-10-05 view colours the municipalities scanned that day and leaves the rest as no data).
+- The two last-known instruments (snow rate, freshness) also have a slider, over every calendar day (21 dates, 2026-10-01..10-21; `series/*_ts.json` from `derived/state`, ages advance on days without observations). Spot check: Kamikawa's last-known snow rate stays at 7.6% from 10-05 to 10-07 (no new clear observation), then 4.7%, 0.0%, and 3.3% on 10-18. Not done: a time-series chart per municipality.

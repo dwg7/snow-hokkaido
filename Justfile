@@ -57,3 +57,7 @@ rebuild upto:
     for d in $(ls ledger/obs/season=*/ | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' | sort -u); do just view-tiles "$d" > /dev/null; done
     just docs-data
     just test
+
+# One daily run: new obs (today and the previous days), events, state, display files, publish plan. Add --upload after `source-coop login`.
+daily *args:
+    python3 src/daily.py {{args}}
