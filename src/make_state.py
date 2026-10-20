@@ -17,6 +17,7 @@ import pandas as pd
 import rasterio
 
 from make_view_tiles import STATE_PALETTE, STATE_RANK, load_day, update_dates_json, write_pmtiles
+from make_events import COUNT_COLS, build_events
 from pixel import STATE_GREEN, STATE_SNOW, STATE_UNKNOWN, Folder, age_days, season_start, state, state_index
 
 STATIC_LAKE, STATIC_SEA, STATIC_CANOPY = 2, 4, 1
@@ -72,13 +73,17 @@ def main():
     valid = land & ((flags & STATIC_CANOPY) == 0)
 
     folder = Folder(muni_index.shape, valid)
-    rows, d, t0 = [], first, time.time()
+    rows, daily, d, t0 = [], [], first, time.time()
     while d <= upto:
         di = (d - start).days + 1
         if d.isoformat() in obs_days:
             with rasterio.open(f"{a.ledger}/grid/cellmap.tif") as cm:
-                cls, _ = load_day(a.ledger, d.isoformat(), cm)
+                cls, ndsi_q, _ = load_day(a.ledger, d.isoformat(), cm)
             folder.update(di, cls)
+            # the day's own counts (one observation per cell per day), same definitions as events
+            day = build_events(cls, ndsi_q, muni_index, flags, master, {})
+            day.insert(1, "date", d.isoformat())
+            daily.append(day)
         led = folder.ledger()
         rows.append(muni_rows(d, di, led, muni_index, land, valid, master, k))
         if not a.no_tiles and (not a.tiles_from or d.isoformat() >= a.tiles_from):
@@ -97,6 +102,13 @@ def main():
     for c in ("n_green", "n_snow", "n_unknown", "n_invalid", "n_fresh"):
         df[c] = df[c].astype("uint32")
     df.sort_values(["muni_code", "date"]).to_parquet(out / f"season={start.year}.parquet", index=False)
+
+    dd = Path(a.ledger) / "derived" / "daily"
+    dd.mkdir(parents=True, exist_ok=True)
+    day_df = pd.concat(daily, ignore_index=True)
+    for c in COUNT_COLS:
+        day_df[c] = day_df[c].astype("uint32")
+    day_df.sort_values(["muni_code", "date"]).to_parquet(dd / f"season={start.year}.parquet", index=False)
 
     led = folder.ledger()
     pix = Path(a.ledger) / "pixel" / f"season={start.year}"

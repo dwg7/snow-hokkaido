@@ -219,16 +219,39 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
     }).catch((err) => { box.appendChild(el('p', 'sh-p', '読み込みに失敗: ' + err.message)); });
   }
 
+  const TS_KEYS = ['snow_rate', 'cloud_rate', 'visible_rate', 'scan_rate'];  // these have a per-day series (series/<key>_ts.json)
+
   function tabularView(host, state, key, name) {
-    Promise.all([loadLayout(), fetchJson('series/' + key + '.json')]).then(([data, series]) => {
+    const hasTs = TS_KEYS.includes(key);
+    Promise.all([loadLayout(), fetchJson('series/' + key + '.json'), hasTs ? fetchJson('series/' + key + '_ts.json') : Promise.resolve(null)]).then(([data, latest, ts]) => {
       if (state.disposed) return;
       state.map = window.TabularMap.create(host, {
         layout: data.layout, municipalities: data.municipalities, wards: data.wards,
         mode: 'region', title: name, includeNorthernTerritoriesVillages: true
       });
-      state.map.setSeries(series);
-      const note = el('div', 'sh-tabular-note', ATTRIBUTION + '。値があるのは、この1回の撮影に写った市町村です (写らなかった市町村は無データ)。一部しか写らなかった市町村は、「見えた割合」と「走査できた割合」が市町村全体に対する割合なので小さくなります。積雪率と雲の割合は、写った範囲だけの割合です。');
-      host.appendChild(note);
+      let noteText = '';
+      if (ts) {
+        // one value per observed day: a slider steps through the days; municipalities not scanned that day show no data
+        const seriesAt = (i) => {
+          const values = {};
+          for (const [code, arr] of Object.entries(ts.values)) if (arr[i] != null) values[code] = arr[i];
+          return { label: ts.label, unit: ts.unit, min: ts.min, max: ts.max, values, asOf: ts.dates[i] + ' (日本時間の1日分)' };
+        };
+        let idx = ts.dates.length - 1;
+        state.map.setSeries(seriesAt(idx));
+        const row = el('div', 'sh-ts-row');
+        const lab = el('span', 'sh-ts-lab', ts.dates[idx]);
+        const slider = document.createElement('input');
+        slider.type = 'range'; slider.className = 'sh-slider'; slider.min = 0; slider.max = ts.dates.length - 1; slider.value = idx;
+        slider.addEventListener('input', () => { idx = +slider.value; lab.textContent = ts.dates[idx]; state.map.setSeries(seriesAt(idx)); });
+        row.appendChild(lab); row.appendChild(slider);
+        host.appendChild(row);
+        noteText = ATTRIBUTION + '。スライダーで日付を動かせます (その日に撮れた観測だけの値。同じ日に複数回撮れた場所は、最後に晴れて見えた観測を使います)。写らなかった市町村は無データです。「見えた割合」と「走査できた割合」は、市町村全体に対する割合なので、一部しか写らなかった日は小さくなります。積雪率と雲の割合は、写った範囲だけの割合です。';
+      } else {
+        state.map.setSeries(latest);
+        noteText = ATTRIBUTION + '。最新の日の値です (日付は上の見出し)。最終既知の計算は、雲で見えなかった場所に、最後に見えた状態を使います。';
+      }
+      host.appendChild(el('div', 'sh-tabular-note', noteText));
     }).catch((err) => { host.appendChild(el('p', 'sh-p', '読み込みに失敗: ' + err.message)); });
   }
 

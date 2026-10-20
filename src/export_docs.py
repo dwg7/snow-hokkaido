@@ -42,6 +42,32 @@ def add_sapporo(df, count_cols, weight_col=None, mean_col=None):
     return pd.concat([df, pd.DataFrame([row])], ignore_index=True)
 
 
+TS_COUNTS = ["n_land", "n_scanned", "n_cloud", "n_shadow", "n_clear", "n_clear_canopy", "n_clear_valid", "n_snow", "n_marginal", "n_nosnow"]
+TS_METRICS = {  # key -> (label, numerator column, denominator column); same definitions as the single-date series
+    "snow_rate": ("積雪率 (確認できたセル中)", "n_snow", "n_clear_valid"),
+    "cloud_rate": ("雲の割合 (走査できたセル中)", "n_cloud", "n_scanned"),
+    "visible_rate": ("見えた割合 (陸セル全体中)", "n_clear_valid", "n_land"),
+    "scan_rate": ("走査できた割合 (陸セル全体中)", "n_scanned", "n_land"),
+}
+
+
+def build_ts(day_df, key):
+    """Time series of one metric from the daily counts: {dates, values: {code: [value or None per date]}}.
+
+    A municipality with no scanned cell on a date has no row, so its value is None (null in JSON).
+    Sapporo's ten wards are also summed into the city code 01100 for every date.
+    """
+    label, num, den = TS_METRICS[key]
+    parts = [add_sapporo(g.reset_index(drop=True), TS_COUNTS) for _, g in day_df.groupby("date")]
+    full = pd.concat(parts, ignore_index=True)
+    dates = sorted(full["date"].unique())
+    values = {}
+    for code, g in full.groupby("muni_code"):
+        by_date = {r.date: pct(getattr(r, num), getattr(r, den)) for r in g.itertuples()}
+        values[code] = [by_date.get(d) for d in dates]
+    return {"label": label, "unit": "%", "min": 0, "max": 100, "dates": dates, "values": values}
+
+
 def pct(num, den):
     return None if den == 0 else round(100 * num / den, 1)
 
@@ -90,6 +116,14 @@ def main():
         doc = {"label": label, "unit": "%", "asOf": f"{as_of} ({scene})", "min": 0, "max": 100,
                "values": values, "notes": notes, "formula": formula}
         (out / "series" / f"{key}.json").write_text(json.dumps(doc, ensure_ascii=False, indent=1))
+
+    # time series (one value per observed day) from derived/daily
+    dp = f"{a.ledger}/derived/daily/season={season_of(ev)}.parquet"
+    if Path(dp).exists():
+        day_df = pd.read_parquet(dp)
+        for key in TS_METRICS:
+            doc = build_ts(day_df, key)
+            (out / "series" / f"{key}_ts.json").write_text(json.dumps(doc, ensure_ascii=False, separators=(",", ":")))
 
     # last-known series from derived/state (latest date): snow rate among cells seen clear, and freshness
     sp = f"{a.ledger}/derived/state/season={season_of(ev)}.parquet"

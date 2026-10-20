@@ -122,3 +122,10 @@ Query: bbox 142.73,43.58,143.44,44.09; datetime 2026-09-01..2026-10-18.
 ## Etorofu on the map (visual check)
 
 - Opened with `?center=148.5,45.3&zoom=9` (new link option of the map instrument) in observed mode, 2026-10-09: the land cells of north-eastern Etorofu (around Shibetoro-dake) follow the coastline of the basemap; the sea stays unpainted; shadow and cloud cells appear as small purple and white patches. A wider view (`?center=147.8,45.0&zoom=8`, last-known mode, 2026-10-20) shows the island's land cells with unknown (transparent) holes where clouds hid the ground on every pass so far. Looked at by eye in the embedded browser only.
+
+## Per-day series for the four rate instruments
+
+- `make_state.py` also writes `derived/daily/season=YYYY.parquet`: for each observed JST day, the events-style counts of that day's observation (one observation per cell per day, the winning pass also supplies `ndsi_q`), 1,437 rows for 20 days. `export_docs.py` turns it into `series/{snow_rate,cloud_rate,visible_rate,scan_rate}_ts.json` (about 20 KB each, 195 codes including the Sapporo city row; `null` where a municipality was not scanned that day). The four tabular instruments got a date slider; the other two (last-known snow rate, freshness) still show the latest date only.
+- Definitions match the single-date series (snow rate = `n_snow / n_clear_valid`, which leaves out marginal cells). Spot check: Kamikawa 2026-10-18 gives 2.9% in both the per-pass series and the per-day series (one pass that day).
+- Tests: `tests/test_export_ts.py` (alignment, nulls, Sapporo sum). Looked at in the embedded browser only (the 2026-10-05 view colours the municipalities scanned that day and leaves the rest as no data).
+- Not done: a time-series chart per municipality; per-day series for the last-known measures (they would need the state replayed per date: `derived/state` has them, the export does not read them yet).

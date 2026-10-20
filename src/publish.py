@@ -80,6 +80,7 @@ def copy_plain(ledger, staging, docs):
     for pattern, dest in (
         (f"{ledger}/events/season=*/*.parquet", "events"),
         (f"{ledger}/derived/state/*.parquet", "derived/state"),
+        (f"{ledger}/derived/daily/*.parquet", "derived/daily"),
     ):
         for f in sorted(glob.glob(pattern)):
             rel = Path(f).relative_to(ledger)
@@ -117,6 +118,7 @@ Daily, cloud-aware snow-cover records for Hokkaido, built from Sentinel-2 L2A on
   (z9 tiles x 454..467, y 183..191). Not every pass covers all of Hokkaido: uncovered cells are 0.
 - `events/`  per municipality and pass: counts of cells by class (Parquet)
 - `derived/state/`  per municipality and date: last-known state counts (Parquet)
+- `derived/daily/`  per municipality and observed day: counts of that day's observation (one observation per cell per day; same columns as events)
 - `pixel/season=YYYY/latest.tif`  latest cell ledger (6 bands, uint16); a cache that can be rebuilt from `obs`
 - `view/`  raster PMTiles for the dashboard (z4-z10; a z10 pixel is a cell) and `dates.json`
 
