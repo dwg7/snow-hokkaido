@@ -49,9 +49,12 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
     return e;
   }
 
+  const ATTRIBUTION = 'Contains modified Copernicus Sentinel data 2026 / 「国土数値情報(行政区域データ)」(国土交通省)をもとに作成(国が作成したものではありません) / 背景地図: 国土地理院最適化ベクトルタイルをもとにしたスタイル(bvmap-starlight) / データ: CC BY 4.0';
+
   function rootView(host) {
     host.appendChild(el('h2', 'sh-h', 'snow-hokkaido'));
     host.appendChild(el('p', 'sh-p', '北海道の積雪を、雲で見えなかったことも含めて記録する台帳の計器盤。左のツリーから計器を選んでください。'));
+    host.appendChild(el('p', 'sh-p sh-muted', ATTRIBUTION));
     host.appendChild(el('p', 'sh-p', '現在は2026-10-18の1パス(北海道の広い範囲を1回で撮影した1回分)の集計です。写真に写らなかった市町村は「無データ」です。地図の計器は、セルの色の上に、背景地図の線画(海岸・川・道路・行政界)と地名を重ねて表示します。'));
     fetchJson('stage1.json').then((m) => {
       host.appendChild(el('p', 'sh-p sh-muted', '観測: ' + m.asOf + ' / ' + m.scene + ' / ' + m.algo_version + ' (暫定の判定規則)'));
@@ -173,6 +176,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
       controls.appendChild(tg);
       legend.appendChild(legendBody);
       legend.appendChild(controls);
+      legend.appendChild(el('div', 'sh-legend-n sh-attr', 'Contains modified Copernicus Sentinel data 2026 / 国土数値情報(行政区域データ)(国土交通省)をもとに作成 / 国土地理院'));
       wrap.appendChild(legend);
       renderLegend();
     }).catch((err) => { host.appendChild(el('p', 'sh-p', '読み込みに失敗: ' + err.message)); });
@@ -186,7 +190,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
         mode: 'region', title: name, includeNorthernTerritoriesVillages: true
       });
       state.map.setSeries(series);
-      const note = el('div', 'sh-tabular-note', '値があるのは、この1回の撮影に写った市町村です (写らなかった市町村は無データ)。一部しか写らなかった市町村は、「見えた割合」と「走査できた割合」が市町村全体に対する割合なので小さくなります。積雪率と雲の割合は、写った範囲だけの割合です。');
+      const note = el('div', 'sh-tabular-note', ATTRIBUTION + '。値があるのは、この1回の撮影に写った市町村です (写らなかった市町村は無データ)。一部しか写らなかった市町村は、「見えた割合」と「走査できた割合」が市町村全体に対する割合なので小さくなります。積雪率と雲の割合は、写った範囲だけの割合です。');
       host.appendChild(note);
     }).catch((err) => { host.appendChild(el('p', 'sh-p', '読み込みに失敗: ' + err.message)); });
   }

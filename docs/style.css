@@ -21,3 +21,4 @@ span.sh-legend-cell { height: auto; }
 .sh-legend-r i.sh-legend-cell { display: block; width: 2.9em; height: 12px; margin: 0; }
 .sh-slider { width: 100%; margin: 6px 0 2px; }
 .sh-mode { margin-right: 8px; }
+.sh-attr { font-size: 9px; line-height: 1.35; }

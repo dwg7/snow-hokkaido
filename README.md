@@ -55,8 +55,10 @@ just docs-data                            # 表示用の軽いデータを作る
 
 ## データの出典とライセンス
 
-- 衛星画像: Sentinel-2(Copernicus / ESA)。Earth Search(Element 84)の STAC 経由。
-- 市町村境界: 国土数値情報「行政区域」(国土交通省、CC BY 4.0)。配布せず、利用者が取得します。集計の結果(市町村ごとの数)は、「国土数値情報(行政区域データ)」(国土交通省)をもとに作成した、加工物です。
-- 背景地図: bvmap-starlight(国土地理院の最適化ベクトルタイルをもとにしたスタイル)。国土地理院コンテンツ利用規約に基づきます。
-- 表の地図 (tabular map): [tabularmaps/do](https://github.com/tabularmaps/do) の描画部品とデータ(CC0)。`docs/vendor/tabularmap/SOURCE.txt` に取得元のコミットを記録しています。
-- 計器盤: [Open MCT](https://nasa.github.io/openmct/)(NASA)、地図: [MapLibre GL JS](https://maplibre.org/)。
+- **コード・文書**: CC0 1.0 ([LICENSE](LICENSE))。
+- **データの成果物** (`ledger/`、`docs/data/`、公開先のデータ): CC BY 4.0。下の出典を表記してください。
+- **衛星画像**: Contains modified Copernicus Sentinel data 2026 (Sentinel-2 L2A。Copernicus Sentinel データ、ESA。Earth Search (Element 84) の STAC 経由)。
+- **市町村境界**: 「国土数値情報(行政区域データ)」(国土交通省)(https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-2026.html) をもとに、セルへの割り当てと集計を行って作成しました。国が作成したものではありません。境界データそのものは配布しません。利用する人が `just fetch-n03` で取得してください (国土数値情報の利用条件は CC BY 4.0。元になった国土地理院の測量成果の扱いは、確認していません)。`ledger/grid/cellmap.tif` と `ledger/muni/master.parquet` は、この境界から作った加工物です。
+- **背景地図**: bvmap-starlight (国土地理院の最適化ベクトルタイルをもとにしたスタイル、改変者 dwg7/bvmap)。国土地理院コンテンツ利用規約に基づきます。
+- **表の地図 (tabular map)**: [tabularmaps/do](https://github.com/tabularmaps/do) の描画部品とデータ (CC0)。`docs/vendor/tabularmap/SOURCE.txt` に取得元のコミットを記録しています。
+- **計器盤**: [Open MCT](https://nasa.github.io/openmct/) (NASA)、地図: [MapLibre GL JS](https://maplibre.org/)、PMTiles: [protomaps/PMTiles](https://github.com/protomaps/PMTiles)。

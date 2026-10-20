@@ -98,12 +98,44 @@ def copy_plain(ledger, staging, docs):
     return files
 
 
+DATA_README = '''# snow-hokkaido data
+
+Daily, cloud-aware snow-cover records for Hokkaido, built from Sentinel-2 L2A on a z18 XYZ-tile cell grid
+(112 m cells). Code, documentation and the dashboard: https://github.com/dwg7/snow-hokkaido
+
+## Layout
+
+- `obs/season=YYYY/<JST date>/<datatake_id>.tif`  obs-lite, one COG per pass: band 1 class (0 not scanned, 1 cloud,
+  2 shadow, 3 green = clear and no snow, 4 snow), band 2 clear_pct. EPSG:3857, z18 cells, 7168 x 4608 cells
+  (z9 tiles x 454..467, y 183..191). Not every pass covers all of Hokkaido: uncovered cells are 0.
+- `events/`  per municipality and pass: counts of cells by class (Parquet)
+- `derived/state/`  per municipality and date: last-known state counts (Parquet)
+- `pixel/season=YYYY/latest.tif`  latest cell ledger (6 bands, uint16); a cache that can be rebuilt from `obs`
+- `view/`  raster PMTiles for the dashboard (z4-z10; a z10 pixel is a cell) and `dates.json`
+
+Municipality boundary geometry is not included. Rebuild the cell-to-municipality map yourself (`just fetch-n03`,
+`just cellmap` in the repository).
+
+## License and attribution
+
+CC BY 4.0. Please credit:
+
+- Contains modified Copernicus Sentinel data 2026 (Sentinel-2 L2A, via Earth Search by Element 84).
+- Municipality codes and aggregation use 「国土数値情報(行政区域データ)」(国土交通省)
+  (https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-2026.html) as the basis; the data were processed
+  (assignment to cells, aggregation). This is not a product made by the national government.
+- Snow classes are provisional (algorithm version in each file's tags); see the repository's `docs/stage1-checks.md`
+  for what was and was not verified.
+'''
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--ledger", default="ledger")
     ap.add_argument("--docs", default="docs")
     ap.add_argument("--staging", default="publish")
     ap.add_argument("--dest", default="s3://smartmaps/foil4gr1/snow-hokkaido/", help="S3 destination prefix (check before --upload)")
+    ap.add_argument("--profile", default="source-coop", help="AWS CLI profile (its credential_process and endpoint_url are used)")
     ap.add_argument("--endpoint", default="https://data.source.coop", help="S3 endpoint URL")
     ap.add_argument("--upload", action="store_true", help="really upload (default: dry run)")
     a = ap.parse_args()
@@ -113,6 +145,8 @@ def main():
         shutil.rmtree(staging)
     staging.mkdir(parents=True)
     files = build_obs_lite(a.ledger, staging) + copy_plain(a.ledger, staging, a.docs)
+    (staging / "README.md").write_text(DATA_README)
+    files.append(staging / "README.md")
 
     by_kind = defaultdict(lambda: [0, 0])
     for f in files:
@@ -123,7 +157,7 @@ def main():
     for k, (n, b) in sorted(by_kind.items()):
         print(f"  {k:10s} {n:4d} files {b / 1e6:7.2f} MB")
     print(f"  total      {len(files):4d} files {sum(f.stat().st_size for f in files) / 1e6:7.2f} MB")
-    cmd = ["aws", "s3", "sync", str(staging) + "/", a.dest, "--endpoint-url", a.endpoint]
+    cmd = ["aws", "s3", "sync", str(staging) + "/", a.dest, "--profile", a.profile, "--endpoint-url", a.endpoint]
     if not a.upload:
         print("\nDRY RUN. Would run:", " ".join(cmd))
         return
