@@ -104,3 +104,9 @@ Query: bbox 142.73,43.58,143.44,44.09; datetime 2026-09-01..2026-10-18.
 - The basemap (bvmap-starlight tiles) returns content over Etorofu at z6-z12 (checked by tile size, not by eye). The tabular layout and the master agree on the six village codes.
 - Found and fixed: the tabular layout has Sapporo as 01100 while N03 has ten wards, so Sapporo showed no data. `export_docs.py` now adds a city row (01100) that sums the wards; the ward rows stay. The city's `age_median` is a cell-weighted mean of the wards' medians (approximate).
 - Not checked: one Etorofu tile took 494 s under load (6 granules), so the all-Hokkaido run will be slow where granules of two UTM zones overlap; no run over the whole Etorofu footprint yet.
+
+## Published dashboard (GitHub Pages) and Source Cooperative
+
+- PR #2 was squash-merged into `main` (c960885); the tree has no boundary geometry (`muni-stage1.geojson` remains in the history through PR #1). Pages was already enabled for `main` `/docs` (custom host `dwg7.unopengis.org`); the build of the merge commit succeeded.
+- Checked in the Claude desktop app's embedded browser on https://dwg7.unopengis.org/snow-hokkaido/ : the dashboard loads; the map reads `view/dates.json` and the PMTiles from Source Cooperative (HTTP 200/206), the series JSON and plugin from Pages; the last-known snow-rate tabular map renders. Not checked: other browsers, phones, `https://dwg7.github.io/snow-hokkaido/` content (HTTP 200 only), loading time on a slow connection (the first map paint took 20-30 s in one run).
+- Upload: `just publish --days 2026-10-17,2026-10-18 --upload` put 14 files (4.5 MB) into `s3://smartmaps/foil4gr1/snow-hokkaido/` with the `source-coop` AWS profile; anonymous range reads and CORS (`*`) were checked on four of the files.

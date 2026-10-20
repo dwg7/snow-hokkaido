@@ -7,6 +7,8 @@ A daily, cloud-aware snow-cover ledger for Hokkaido, built on Sentinel-2 COGs an
 
 ## まず見てみよう
 
+**公開ページ: https://dwg7.unopengis.org/snow-hokkaido/** (GitHub Pages。`main` の `docs/` を配信しています)。日付ごとの地図ファイルは、Source Cooperative (`smartmaps/foil4gr1/snow-hokkaido/`) から読み込みます。
+
 ブラウザで `docs/index.html` を開く計器盤です(ローカルで見るなら `python3 -m http.server 8765 --directory docs` のあと `http://localhost:8765/`)。左のメニューに計器が並んでいます。
 
 - **地図 (MapLibre)** … 地図の上に、セルごとの色(雪=青、雪でない=緑)を重ねて表示します。「最終既知」(最後に見えた状態と、見えてからの日数)と「観測値」(その日に撮れた場所だけ)を切り替えられ、日付はスライダーで動かせます。海岸・川・道路・行政界の線と地名は、色の上に描かれます。
