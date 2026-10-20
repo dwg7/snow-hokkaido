@@ -1,4 +1,4 @@
-# Daily ingest (design, not implemented)
+# Daily ingest (design; steps 1-2 of the work order are implemented)
 
 Goal: every day, pick up new Sentinel-2 passes over Hokkaido, extend the ledger and the published files, with no manual steps except what cannot be automated (see "Open questions"). Everything below reuses what exists: `make_obs.py` (resumable), `make_events.py`, `make_state.py`, `make_view_tiles.py`, `publish.py`.
 
@@ -37,3 +37,9 @@ Goal: every day, pick up new Sentinel-2 passes over Hokkaido, extend the ledger 
 ## Order of work
 
 1. late-granule refresh in `make_obs.py`; 2. `just daily` (steps 1-5, dry-run publish); 3. incremental state from the `pixel` snapshot with the weekly full check; 4. move `series/*.json` to Source Cooperative; 5. scheduler and notification once the credential question is settled.
+
+## Status
+
+- Implemented: the late-granule refresh in `make_obs.py` (each file records `granules_considered`; a file is rebuilt when STAC shows granules it did not consider; older files without the tag count as complete), `--touched` (pass directories written), `make_state.py --tiles-from`, a persistent `publish/` staging directory (unchanged files keep their mtime, so `aws s3 sync` should not re-upload them; not checked against the real bucket because the login had expired), and `just daily [--today D] [--lookback N] [--upload]` (`src/daily.py`).
+- Tried once, `just daily --today 2026-10-21 --lookback 2`: no scene for 2026-10-21 was in STAC yet (obs step 1 s), 2026-10-20 was checked and nothing rebuilt (2 s), the state replay took 18 s, the whole run 23 s, and the publish plan listed 95 files (50.1 MB). **Not yet exercised on real data:** a run that finds new passes, and a late-arriving granule triggering a rebuild.
+- Not implemented: resuming the state from the cached `pixel` snapshot, `superseded_by`, `series/*.json` on Source Cooperative, scheduler, notification.

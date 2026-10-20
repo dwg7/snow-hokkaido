@@ -40,6 +40,9 @@ def build_obs_lite(ledger, staging, days=None):
     for (season, day, datatake), files in sorted(passes.items()):
         dst_path = staging / "obs" / season / day / f"{datatake}.tif"
         dst_path.parent.mkdir(parents=True, exist_ok=True)
+        if dst_path.exists() and dst_path.stat().st_mtime >= max(Path(f).stat().st_mtime for f in files):
+            out.append(dst_path)  # up to date: keep the file (and its mtime) so `aws s3 sync` does not re-upload it
+            continue
         cls = np.zeros((h, w), np.uint8)
         pct = np.zeros((h, w), np.uint8)
         tags = {}
@@ -82,7 +85,8 @@ def copy_plain(ledger, staging, docs):
             rel = Path(f).relative_to(ledger)
             t = staging / rel
             t.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(f, t)
+            if not t.exists() or Path(f).stat().st_mtime > t.stat().st_mtime or Path(f).stat().st_size != t.stat().st_size:
+                shutil.copy2(f, t)
             files.append(t)
     # latest pixel only
     pix = sorted(glob.glob(f"{ledger}/pixel/season=*/*.tif"))
@@ -90,12 +94,13 @@ def copy_plain(ledger, staging, docs):
         latest = Path(pix[-1])
         t = staging / "pixel" / latest.parent.name / "latest.tif"
         t.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(latest, t)
+        shutil.copy2(latest, t)  # always replaced: its content changes every day
         files.append(t)
     for f in sorted(glob.glob(f"{docs}/data/view/*")):
         t = staging / "view" / Path(f).name
         t.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(f, t)
+        if not t.exists() or Path(f).stat().st_mtime > t.stat().st_mtime or Path(f).stat().st_size != t.stat().st_size:
+            shutil.copy2(f, t)
         files.append(t)
     return files
 
@@ -143,10 +148,8 @@ def main():
     ap.add_argument("--upload", action="store_true", help="really upload (default: dry run)")
     a = ap.parse_args()
 
-    staging = Path(a.staging)
-    if staging.exists():
-        shutil.rmtree(staging)
-    staging.mkdir(parents=True)
+    staging = Path(a.staging)  # kept between runs; only changed files are rebuilt or copied
+    staging.mkdir(parents=True, exist_ok=True)
     files = build_obs_lite(a.ledger, staging, set(a.days.split(",")) if a.days else None) + copy_plain(a.ledger, staging, a.docs)
     (staging / "README.md").write_text(DATA_README)
     files.append(staging / "README.md")

@@ -197,7 +197,7 @@ def process_granule(item, tx, ty):
             "pixels_per_cell": (int(total[seen].min()), float(np.median(total[seen])), int(total[seen].max()))}
 
 
-def write_obs(path, tx, ty, parts, items):
+def write_obs(path, tx, ty, parts, items, considered=None):
     """Write one pass x tile file from merged granule results."""
     cls, ndsi_q, clear_pct = parts["cls"], parts["ndsi_q"], parts["clear_pct"]
     x0, y0, (west, south, east, north), _ = tile_geom(tx, ty)
@@ -213,6 +213,7 @@ def write_obs(path, tx, ty, parts, items):
             dst.set_band_description(i, name)
         dst.update_tags(
             tile=f"9/{tx}/{ty}", zoom=str(Z), sensor="s2", stac_collection=COLLECTION,
+            granules_considered=",".join(sorted(c["properties"]["s2:product_uri"] for c in (considered or items))),
             scene=",".join(i["id"] for i in items), product_uri=",".join(i["properties"]["s2:product_uri"] for i in items),
             datatake_id=p0["s2:datatake_id"], obs_start_utc=times[0], obs_end_utc=times[-1],
             sun_elevation=str(np.mean([i["properties"].get("view:sun_elevation", np.nan) for i in items])),
@@ -231,6 +232,7 @@ def main():
     ap.add_argument("--cellmap", default="ledger/grid/cellmap.tif")
     ap.add_argument("--out", default="ledger")
     ap.add_argument("--workers", type=int, default=4, help="parallel pass x tile jobs (about 1.5 GB RAM each)")
+    ap.add_argument("--touched", help="append the pass directory of every file written to this file")
     ap.add_argument("--force", action="store_true", help="rebuild files that already exist (default: skip complete ones)")
     ap.add_argument("--dry-run", action="store_true", help="print the plan and stop")
     a = ap.parse_args()
@@ -262,13 +264,18 @@ def main():
             print(" ", dt, t, [c["properties"]["grid:code"] for c in cover])
         return
 
-    def done_already(out):
-        # a complete earlier result is reused (resume after an interruption); an unreadable file is rebuilt
+    def done_already(out, cover):
+        # A complete earlier result is reused (resume after an interruption). It is rebuilt when STAC now shows
+        # granules for this pass and tile that the file did not consider (late arrivals), or when it is unreadable.
         if a.force or not out.exists():
             return False
         try:
             with rasterio.open(out) as d:
-                return d.count == 3 and "obs_start_utc" in d.tags()
+                tags = d.tags()
+                if d.count != 3 or "obs_start_utc" not in tags:
+                    return False
+                seen = tags.get("granules_considered")  # files written before this tag existed count as complete
+                return seen is None or set(seen.split(",")) == {c["properties"]["s2:product_uri"] for c in cover}
         except Exception:
             return False
 
@@ -276,7 +283,7 @@ def main():
         dt, (tx, ty), cover = job
         t0 = time.time()
         out = Path(a.out) / "obs" / f"season={season}" / a.date / dt / f"{tx}-{ty}.tif"
-        if done_already(out):
+        if done_already(out, cover):
             return f"  {dt} {tx}/{ty}: exists, skipped"
         merged, used = None, []
         for it in cover:
@@ -294,7 +301,10 @@ def main():
                 merged["qc"][k] += r["qc"][k]
         if merged is None or not (merged["cls"] > 0).any():
             return f"  {dt} {tx}/{ty}: nothing scanned, skipped"
-        write_obs(out, tx, ty, merged, used)
+        write_obs(out, tx, ty, merged, used, cover)
+        if a.touched:  # let a caller (daily.py) know which passes changed
+            with open(a.touched, "a") as fh:
+                fh.write(str(out.parent) + "\n")
         vals, cnt = np.unique(merged["cls"], return_counts=True)
         return f"  {dt} {tx}/{ty}: {len(used)} granule(s) {dict(zip(vals.tolist(), cnt.tolist()))} {time.time() - t0:.0f}s"
 

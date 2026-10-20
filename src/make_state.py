@@ -52,6 +52,7 @@ def main():
     ap.add_argument("--ledger", default="ledger")
     ap.add_argument("--out", default="docs/data/view")
     ap.add_argument("--no-tiles", action="store_true")
+    ap.add_argument("--tiles-from", help="only write the per-day PMTiles for dates on or after this JST date (the state is still replayed from the start)")
     a = ap.parse_args()
 
     upto = date.fromisoformat(a.upto)
@@ -80,7 +81,7 @@ def main():
             folder.update(di, cls)
         led = folder.ledger()
         rows.append(muni_rows(d, di, led, muni_index, land, valid, master, k))
-        if not a.no_tiles:
+        if not a.no_tiles and (not a.tiles_from or d.isoformat() >= a.tiles_from):
             idx = state_index(led, di, valid)
             n, bbox = write_pmtiles(Path(a.out) / f"state-{d.isoformat()}.pmtiles", idx, bounds, z9, STATE_PALETTE, STATE_RANK,
                                     f"snow-hokkaido last known state {d.isoformat()} (JST)",
