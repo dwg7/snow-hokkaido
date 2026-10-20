@@ -22,3 +22,13 @@ span.sh-legend-cell { height: auto; }
 .sh-slider { width: 100%; margin: 6px 0 2px; }
 .sh-mode { margin-right: 8px; }
 .sh-attr { font-size: 9px; line-height: 1.35; }
+.sh-about { height: 100%; overflow-y: auto; box-sizing: border-box; padding: 12px 18px 28px; max-width: 52em; font-size: 13px; line-height: 1.75; color: var(--sh-ink); }
+.sh-about h2 { font-size: 18px; margin: 4px 0 10px; }
+.sh-about h3 { font-size: 15px; margin: 22px 0 6px; padding-bottom: 3px; border-bottom: 1px solid #3a3a37; }
+.sh-about ul { list-style: disc; padding-left: 1.4em; margin: 6px 0; }
+.sh-about li { margin: 3px 0; }
+.sh-about code { background: #2c2c2a; padding: 0 4px; border-radius: 3px; }
+.sh-lead { color: var(--sh-ink); }
+.sh-table { border-collapse: collapse; margin: 8px 0; width: 100%; font-size: 12.5px; }
+.sh-table th, .sh-table td { border: 1px solid #3a3a37; padding: 4px 8px; text-align: left; vertical-align: top; }
+.sh-table th { background: #2c2c2a; }

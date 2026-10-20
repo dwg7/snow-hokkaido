@@ -12,7 +12,8 @@
  *          ├─ tabular:visible_rate
  *          ├─ tabular:scan_rate
  *          ├─ tabular:snow_rate_last
- *          └─ tabular:freshness
+ *          ├─ tabular:freshness
+ *          └─ about               text page: the algorithm explanation (about-algorithm.html)
  *
  * Data (all under dataUrl): stage1.json, view/dates.json + view/{obs,state}-<date>.pmtiles,
  *   series/<key>.json ({label, unit, asOf, min, max, values:{code:number}, notes:{code:string}}),
@@ -182,6 +183,20 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
     }).catch((err) => { host.appendChild(el('p', 'sh-p', '読み込みに失敗: ' + err.message)); });
   }
 
+  // Text page: the algorithm explanation lives in docs/about-algorithm.html (a trusted same-origin fragment).
+  function aboutView(host, state) {
+    const box = el('div', 'sh-about');
+    host.appendChild(box);
+    fetch(new URL('about-algorithm.html', document.baseURI).href, { cache: 'no-store' }).then((r) => {
+      if (!r.ok) throw new Error('about-algorithm.html ' + r.status);
+      return r.text();
+    }).then((html) => {
+      if (state.disposed) return;
+      box.innerHTML = html;
+      box.appendChild(el('p', 'sh-p sh-muted', ATTRIBUTION));
+    }).catch((err) => { box.appendChild(el('p', 'sh-p', '読み込みに失敗: ' + err.message)); });
+  }
+
   function tabularView(host, state, key, name) {
     Promise.all([loadLayout(), fetchJson('series/' + key + '.json')]).then(([data, series]) => {
       if (state.disposed) return;
@@ -209,8 +224,9 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
     };
     add('root', 'snow-hokkaido', 'root');
     add('maplibre', '地図 (MapLibre)', 'maplibre');
+    add('about', 'アルゴリズムの説明', 'about');
     for (const t of TABULAR) add('tabular:' + t.key, t.name, 'tabular', { series: t.key });
-    const children = [{ namespace: NS, key: 'maplibre' }, ...TABULAR.map((t) => ({ namespace: NS, key: 'tabular:' + t.key }))];
+    const children = [{ namespace: NS, key: 'maplibre' }, ...TABULAR.map((t) => ({ namespace: NS, key: 'tabular:' + t.key })), { namespace: NS, key: 'about' }];
 
     openmct.objects.addRoot({ namespace: NS, key: 'root' });
     openmct.objects.addProvider(NS, {
@@ -237,6 +253,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
             const kind = domainObject.snow.kind;
             if (kind === 'root') rootView(host);
             else if (kind === 'maplibre') mapView(host, state);
+            else if (kind === 'about') aboutView(host, state);
             else tabularView(host, state, domainObject.snow.series, domainObject.name);
           },
           destroy() {
