@@ -23,6 +23,25 @@ def season_of(ev):
     return d.year if d.month >= 8 else d.year - 1
 
 
+WARDS = [f"011{i:02d}" for i in range(1, 11)]  # N03 has the ten Sapporo wards; the tabular layout also uses 01100 for the city
+
+
+def add_sapporo(df, count_cols, weight_col=None, mean_col=None):
+    """Append a Sapporo city row (code 01100) that sums the ten wards, keeping the ward rows."""
+    w = df[df.muni_code.isin(WARDS)]
+    if w.empty or (df.muni_code == "01100").any():
+        return df
+    row = {c: w[c].sum() for c in count_cols}
+    for c in df.columns:
+        if c not in row:
+            row[c] = w[c].iloc[0] if c in ("date", "obs_start_utc", "algo_version") else None
+    row["muni_code"] = "01100"
+    if mean_col is not None:  # weighted mean of a per-ward statistic (age_median is only approximate for the city)
+        wt = w[weight_col]
+        row[mean_col] = float((w[mean_col] * wt).sum() / wt.sum()) if wt.sum() else None
+    return pd.concat([df, pd.DataFrame([row])], ignore_index=True)
+
+
 def pct(num, den):
     return None if den == 0 else round(100 * num / den, 1)
 
@@ -37,6 +56,7 @@ def main():
 
     ev_path = sorted(glob.glob(f"{a.ledger}/events/season=*/part-*.parquet"))[-1]
     ev = pd.read_parquet(ev_path)
+    ev = add_sapporo(ev, ["n_land", "n_scanned", "n_cloud", "n_shadow", "n_clear", "n_clear_canopy", "n_clear_valid", "n_snow", "n_marginal", "n_nosnow"])
     as_of_utc = ev["obs_start_utc"].iloc[0]
     as_of = as_of_utc.tz_convert("Asia/Tokyo").strftime("%Y-%m-%d %H:%M JST")
     n_gran = len(ev["sources"].iloc[0])
@@ -75,7 +95,9 @@ def main():
     sp = f"{a.ledger}/derived/state/season={season_of(ev)}.parquet"
     if Path(sp).exists():
         st = pd.read_parquet(sp)
-        st = st[st.date == st.date.max()]
+        st = st[st.date == st.date.max()].copy()
+        st["n_known"] = st.n_green + st.n_snow
+        st = add_sapporo(st, ["n_green", "n_snow", "n_unknown", "n_invalid", "n_fresh", "n_known"], weight_col="n_known", mean_col="age_median")
         known = st.n_green + st.n_snow
         for key, label, num, den_note in (
             ("snow_rate_last", "積雪率・最終既知 (見えたことのあるセル中)", st.n_snow, "n_snow / (n_green + n_snow)"),
