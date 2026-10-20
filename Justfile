@@ -42,3 +42,18 @@ obs-range newest oldest *args:
       echo "=== $d"; just obs "$d" {{args}}
       d=$(date -j -v-1d -f %Y-%m-%d "$d" +%Y-%m-%d)
     done
+
+# After obs files exist: events for every pass that has none, the state history up to `upto`, the display tiles, and the Pages data.
+rebuild upto:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for p in ledger/obs/season=*/*/*; do
+      [ -d "$p" ] || continue
+      day=$(basename "$(dirname "$p")"); dt=$(basename "$p")
+      f=$(ls ledger/events/season=*/part-${day}_${dt}.parquet 2>/dev/null | head -1 || true)
+      if [ -z "$f" ]; then echo "events: $p"; just events "$p" > /dev/null; fi
+    done
+    just state {{upto}}
+    for d in $(ls ledger/obs/season=*/ | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' | sort -u); do just view-tiles "$d" > /dev/null; done
+    just docs-data
+    just test
