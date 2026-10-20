@@ -118,3 +118,7 @@ Query: bbox 142.73,43.58,143.44,44.09; datetime 2026-09-01..2026-10-18.
 - Etorofu: events exist for Rubetsu (01698), Shana (01699) and Shibetoro (01700) on 11 different days; e.g. 10-04 Shibetoro scanned 100% with 3-4% cloud, 10-09 scanned 100% with 6% cloud and 39 snow cells. Days over Etorofu are often cloudy (cloud 99-100% on 10-11, 10-14, 10-17, 10-19). Coverage by two UTM zones needed no special handling.
 - Days with only 3 tile files (10-09, 10-14, 10-19) are passes that touch the east of Hokkaido only.
 - Per-date PMTiles are no longer tracked in git (`docs/data/view/` is ignored); they live on Source Cooperative.
+
+## Etorofu on the map (visual check)
+
+- Opened with `?center=148.5,45.3&zoom=9` (new link option of the map instrument) in observed mode, 2026-10-09: the land cells of north-eastern Etorofu (around Shibetoro-dake) follow the coastline of the basemap; the sea stays unpainted; shadow and cloud cells appear as small purple and white patches. A wider view (`?center=147.8,45.0&zoom=8`, last-known mode, 2026-10-20) shows the island's land cells with unknown (transparent) holes where clouds hid the ground on every pass so far. Looked at by eye in the embedded browser only.

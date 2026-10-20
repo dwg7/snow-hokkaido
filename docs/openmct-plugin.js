@@ -68,6 +68,13 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
     }).catch(() => {});
   }
 
+  function initialView() {
+    const q = new URLSearchParams(location.search);
+    const c = (q.get('center') || '').split(',').map(Number);
+    const z = Number(q.get('zoom'));
+    return c.length === 2 && c.every(Number.isFinite) && Number.isFinite(z) && q.get('zoom') ? { center: c, zoom: z } : null;
+  }
+
   function ensurePmtiles() {
     if (!window.__pmtilesProtocol) {
       window.__pmtilesProtocol = new pmtiles.Protocol();
@@ -95,8 +102,8 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
       const map = state.map = new maplibregl.Map({
         container: wrap,
         style: STYLE_URL,
-        bounds: [[view.bbox[0], view.bbox[1]], [view.bbox[2], view.bbox[3]]],
-        fitBoundsOptions: { padding: 20 },
+        // ?center=lon,lat&zoom=z opens at that view (for links); otherwise fit all of Hokkaido
+        ...(initialView() || { bounds: [[view.bbox[0], view.bbox[1]], [view.bbox[2], view.bbox[3]]], fitBoundsOptions: { padding: 20 } }),
         maxZoom: 17
       });
       map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
