@@ -3,3 +3,7 @@ __pycache__/
 .venv/
 /ledger/obs/
 /ledger/pixel/
+# municipality boundary geometry is not published (derived from MLIT N03; reuse of the underlying survey product needs approval)
+/docs/data/muni*.geojson
+/docs/data/obs-class.png
+/publish/

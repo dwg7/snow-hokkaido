@@ -9,7 +9,7 @@ A daily, cloud-aware snow-cover ledger for Hokkaido, built on Sentinel-2 COGs an
 
 ブラウザで `docs/index.html` を開く計器盤です(ローカルで見るなら `python3 -m http.server 8765 --directory docs` のあと `http://localhost:8765/`)。左のメニューに計器が並んでいます。
 
-- **地図 (MapLibre)** … 地図の上に、雪(青)と雪でない場所(緑)を重ねて表示します。市町村の線をクリックすると、その市町村の雪の割合が出ます。
+- **地図 (MapLibre)** … 地図の上に、セルごとの色(雪=青、雪でない=緑)を重ねて表示します。「最終既知」(最後に見えた状態と、見えてからの日数)と「観測値」(その日に撮れた場所だけ)を切り替えられ、日付はスライダーで動かせます。海岸・川・道路・行政界の線と地名は、色の上に描かれます。
 - **積雪率 / 雲の割合 / 見えた割合 (tabular map)** … 北海道179の市町村を、同じ大きさの四角に並べた「表の地図」です。色の濃さが数字の大きさです。
 
 ## このプロジェクトの考え方 (コンセプト)
@@ -36,7 +36,7 @@ just test                                 # 数え方が矛盾していないか
 just docs-data                            # 表示用の軽いデータを作る
 ```
 
-`just cellmap` には、国土数値情報の「行政区域」データが必要です(`data/raw/` に置きます。大きいのでリポジトリには入れていません)。
+`just cellmap` には、国土数値情報の「行政区域」データが必要です。**このリポジトリは、市町村の境界データ(とその加工物)を配布しません。** 利用する人が、自分で `just fetch-n03` を実行して取得し、`just cellmap` で組み立ててください(`data/raw/` に置かれ、`.gitignore` で除外されます)。理由は、元になった国土地理院の測量成果の複製・使用に承認が要る可能性があり、そこまでは確認していないためです。
 
 ## わかっていないこと・限界 (正直に書きます)
 
@@ -56,7 +56,7 @@ just docs-data                            # 表示用の軽いデータを作る
 ## データの出典とライセンス
 
 - 衛星画像: Sentinel-2(Copernicus / ESA)。Earth Search(Element 84)の STAC 経由。
-- 市町村境界: 国土数値情報「行政区域」(国土交通省)。
+- 市町村境界: 国土数値情報「行政区域」(国土交通省、CC BY 4.0)。配布せず、利用者が取得します。集計の結果(市町村ごとの数)は、「国土数値情報(行政区域データ)」(国土交通省)をもとに作成した、加工物です。
 - 背景地図: bvmap-starlight(国土地理院の最適化ベクトルタイルをもとにしたスタイル)。国土地理院コンテンツ利用規約に基づきます。
 - 表の地図 (tabular map): [tabularmaps/do](https://github.com/tabularmaps/do) の描画部品とデータ(CC0)。`docs/vendor/tabularmap/SOURCE.txt` に取得元のコミットを記録しています。
 - 計器盤: [Open MCT](https://nasa.github.io/openmct/)(NASA)、地図: [MapLibre GL JS](https://maplibre.org/)。

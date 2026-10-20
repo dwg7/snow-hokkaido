@@ -34,6 +34,10 @@ Rebuilding a year of obs from the public archive at the measured speed would tak
 
 Range reads matter for the dashboard only if it reads obs directly; the current pages need only light derived files (series JSON, one class PNG).
 
-## Decision
+## Decision (owner, after this report)
 
-Open. Until decided, `ledger/obs/` and other large layers are git-ignored; `cellmap`, `master` and `events` (small) stay in git.
+- **Destination:** Source Cooperative, folder `snow-hokkaido/` in the owner's `smartmaps/foil4gr1` repository (the owner's account). Upload tool and exact endpoint conventions are **not verified**; `just publish` is a dry run by default and prints the `aws s3 sync` command it would run (`--upload` to execute, with credentials already in the environment).
+- **obs:** the light version, one COG per pass (class + clear_pct on the whole cellmap extent, about 1 MB per pass; measured 0.54 / 0.97 MB for two passes). `ndsi_q` stays local.
+- **pixel:** the latest snapshot only (`pixel/season=YYYY/latest.tif`); past states are replayed from the obs-lite files (`pixel.fold`), and per-day `state-<date>.pmtiles` keep the cell-level state and age bucket of each day.
+- **Not published:** municipality boundary geometry and anything rasterized from it (`grid/cellmap.tif`, `muni/master.parquet`); users build them with `just fetch-n03` and `just cellmap`. The repository tracking of those two files is undecided.
+- Dry run on the current ledger: 13 files, 4.5 MB (obs 1.5, view 1.6, pixel 1.3, events/derived 0.05).

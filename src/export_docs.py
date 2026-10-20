@@ -1,4 +1,6 @@
-"""Export light derived files for the docs/ site (Pages): series JSON (tabularmaps contract), class PNG, municipality GeoJSON.
+"""Export light derived files for the docs/ site (Pages): series JSON (tabularmaps contract) and stage1.json (legend, as-of).
+
+No municipality boundary geometry is exported (derived from MLIT N03; see README).
 
 Series contract (tabularmaps/do): {label, unit, asOf, min, max, values: {<5-digit code>: number}, notes: {code: str}}.
 Rates are computed here from event counts; counts are the stored fact.
@@ -6,18 +8,9 @@ Rates are computed here from event counts; counts are the stored fact.
 import argparse
 import glob
 import json
-import math
 from pathlib import Path
 
-import geopandas as gpd
-import numpy as np
 import pandas as pd
-import rasterio
-import shapely
-from PIL import Image
-from pyproj import Transformer
-from shapely.geometry import mapping
-from shapely.ops import unary_union
 
 # obs class -> RGBA (0 no data, 1 cloud, 2 shadow, 3 green, 4 snow)
 # Alpha is 0 or 255 only: partial alpha / raster-opacity < 1 rendered black in the embedded browser.
@@ -37,7 +30,6 @@ def pct(num, den):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--ledger", default="ledger")
-    ap.add_argument("--n03", default="data/raw/n03-20260101/N03-20260101_01.shp")
     ap.add_argument("--out", default="docs/data")
     a = ap.parse_args()
     out = Path(a.out)
@@ -99,33 +91,7 @@ def main():
             doc = {"label": label, "unit": "%", "asOf": st.date.iloc[0], "min": 0, "max": 100, "values": values, "notes": notes, "formula": den_note}
             (out / "series" / f"{key}.json").write_text(json.dumps(doc, ensure_ascii=False, indent=1))
 
-    # class raster -> RGBA PNG, with geographic corners
-    obs_path = sorted(glob.glob(f"{a.ledger}/obs/season=*/*/*/459-186.tif"))[-1]  # stage-1 tile, latest pass
-    with rasterio.open(obs_path) as d:
-        cls = d.read(1)
-        l, b, r_, t = d.bounds
-    lut = np.array([PALETTE[i] for i in range(5)], dtype=np.uint8)
-    Image.fromarray(lut[np.clip(cls, 0, 4)], "RGBA").save(out / "obs-class.png", optimize=True)
-    to_ll = Transformer.from_crs(3857, 4326, always_xy=True)
-    (w, n), (e, s) = to_ll.transform(l, t), to_ll.transform(r_, b)
-
-    # municipality polygons for all of Hokkaido (hit-testing and popups), simplified to about 100 m
-    gdf = gpd.read_file(a.n03)
-    gdf = gdf[gdf["N03_007"].notna()]
-    master = pd.read_parquet(f"{a.ledger}/muni/master.parquet").set_index("muni_code")
-    feats = []
-    for code, g in gdf.groupby("N03_007"):
-        if code not in master.index:
-            continue
-        geom = shapely.set_precision(unary_union(list(g.geometry)).simplify(0.001, preserve_topology=True), 1e-4)
-        feats.append({"type": "Feature", "geometry": mapping(geom),
-                      "properties": {"code": code, "name": master.loc[code, "name"]}})
-    (out / "muni.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats},
-                                                 ensure_ascii=False, separators=(",", ":")))
-    (out / "muni-stage1.geojson").unlink(missing_ok=True)
-
-    meta = {"tile": "9/459/186", "asOf": as_of, "scene": scene, "bbox": [w, s, e, n],
-            "coordinates": [[w, n], [e, n], [e, s], [w, s]],
+    meta = {"asOf": as_of, "scene": scene,
             "classes": {"0": "走査外", "1": "雲", "2": "影", "3": "緑 (雪なし)", "4": "雪"},
             "colors": {k: "#%02x%02x%02x" % v[:3] for k, v in PALETTE.items() if k},
             "algo_version": ev["algo_version"].iloc[0]}

@@ -6,7 +6,7 @@
  *   no Telemetry API, no Plot, no Display Layout. Each view fetches static JSON itself.
  *
  * Tree:  root (snow.instrument, kind 'root')
- *          ├─ maplibre            MapLibre map: obs classes (image overlay) + municipality outlines
+ *          ├─ maplibre            MapLibre map: per-date raster PMTiles (last known / observed) under the basemap's line work
  *          ├─ tabular:snow_rate   tabularmaps cells coloured by a series
  *          ├─ tabular:cloud_rate
  *          ├─ tabular:visible_rate
@@ -14,7 +14,7 @@
  *          ├─ tabular:snow_rate_last
  *          └─ tabular:freshness
  *
- * Data (all under dataUrl): stage1.json, muni.geojson, view/dates.json + view/obs-<date>.pmtiles,
+ * Data (all under dataUrl): stage1.json, view/dates.json + view/{obs,state}-<date>.pmtiles,
  *   series/<key>.json ({label, unit, asOf, min, max, values:{code:number}, notes:{code:string}}),
  *   layout-v08.json, municipalities.json, sapporo-wards.json (tabularmaps/do).
  */
@@ -71,8 +71,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
     ensurePmtiles();
     const wrap = el('div', 'sh-map');
     host.appendChild(wrap);
-    Promise.all([fetchJson('stage1.json'), fetchJson('muni.geojson'), fetchJson('series/snow_rate.json'),
-      fetchJson('series/snow_rate_last.json'), fetchJson('view/dates.json')]).then(([meta, muni, snowObs, snowLast, view]) => {
+    Promise.all([fetchJson('stage1.json'), fetchJson('view/dates.json')]).then(([meta, view]) => {
       if (state.disposed) return;
       const map = state.map = new maplibregl.Map({
         container: wrap,
@@ -106,7 +105,6 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
 
       map.on('style.load', () => {
         const layers = map.getStyle().layers;
-        const firstSymbol = (layers.find((l) => l.type === 'symbol') || {}).id;
         rasterBefore = (layers.find((l) => l.type === 'fill' && l['source-layer'] === 'WA') || layers.find((l) => l.type === 'line') || {}).id;
         // The basemap's topographic area fill (TpgphArea: wetland 7401, perennial snow 7402, gravel 7403) would show
         // light-gray "snow" patches that readers could take for our data. Drop perennial snow (7402) and draw the rest
@@ -116,24 +114,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
           map.setFilter(tp.id, ['all', map.getFilter(tp.id), ['!=', ['get', 'vt_code'], 7402]]);
           map.moveLayer(tp.id, rasterBefore);
         }
-        // Municipality polygons for the whole region: invisible, for clicks and a hover outline only.
-        map.addSource('muni', { type: 'geojson', data: muni });
-        map.addLayer({ id: 'muni-fill', type: 'fill', source: 'muni', paint: { 'fill-color': '#000000', 'fill-opacity': 0 } }, firstSymbol);
-        map.addLayer({ id: 'muni-hover', type: 'line', source: 'muni', filter: ['==', ['get', 'code'], ''],
-          paint: { 'line-color': '#e8590c', 'line-width': 2 } }, firstSymbol);
         showLayer();
-        map.on('click', 'muni-fill', (e) => {
-          const p = e.features[0].properties;
-          const row = (label, ser) => (ser.values[p.code] == null ? label + ': 無データ<br>' : label + ': ' + ser.values[p.code] + '%<br><span style="color:#555">' + (ser.notes[p.code] || '') + '</span><br>');
-          const html = '<b>' + p.name + '</b> (' + p.code + ')<br>' + row('積雪率(最終既知)', snowLast) + row('積雪率(観測値)', snowObs)
-            + '<span style="color:#555">ポップアップは最新日の値です (' + snowLast.asOf + ')</span>';
-          new maplibregl.Popup({ closeButton: true, maxWidth: '300px' }).setLngLat(e.lngLat).setHTML(html).addTo(map);
-        });
-        map.on('mousemove', 'muni-fill', (e) => {
-          map.getCanvas().style.cursor = 'pointer';
-          map.setFilter('muni-hover', ['==', ['get', 'code'], e.features[0].properties.code]);
-        });
-        map.on('mouseleave', 'muni-fill', () => { map.getCanvas().style.cursor = ''; map.setFilter('muni-hover', ['==', ['get', 'code'], '']); });
       });
 
       const legend = el('div', 'sh-legend');
