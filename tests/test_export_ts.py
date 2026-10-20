@@ -29,3 +29,16 @@ def test_sapporo_city_is_the_sum_of_the_wards():
     ts = build_ts(pd.DataFrame(rows("2026-10-01", wards)), "snow_rate")
     assert "01100" in ts["values"] and ts["values"]["01100"] == [10.0]
     assert ts["values"]["01101"] == [10.0]  # the ward rows stay
+
+
+def test_state_series_covers_every_day_and_skips_unseen_municipalities():
+    from export_docs import build_state_ts
+    rows_ = []
+    for date, (g, sn, fresh) in {"2026-10-01": (0, 0, 0), "2026-10-02": (90, 10, 100), "2026-10-03": (90, 10, 40)}.items():
+        rows_.append({"muni_code": "01204", "date": date, "n_green": g, "n_snow": sn, "n_unknown": 5, "n_invalid": 0,
+                      "n_fresh": fresh, "age_median": 1.0})
+    ts = build_state_ts(pd.DataFrame(rows_), "snow_rate_last")
+    assert ts["dates"] == ["2026-10-01", "2026-10-02", "2026-10-03"]
+    assert ts["values"]["01204"] == [None, 10.0, 10.0]  # nothing seen yet on the first day
+    fr = build_state_ts(pd.DataFrame(rows_), "freshness")
+    assert fr["values"]["01204"] == [None, 100.0, 40.0]

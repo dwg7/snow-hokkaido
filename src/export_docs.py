@@ -68,6 +68,28 @@ def build_ts(day_df, key):
     return {"label": label, "unit": "%", "min": 0, "max": 100, "dates": dates, "values": values}
 
 
+STATE_TS = {  # last-known measures per calendar day, from derived/state: key -> (label, numerator column)
+    "snow_rate_last": ("積雪率・最終既知 (見えたことのあるセル中)", "n_snow"),
+    "freshness": ("鮮度 (最終既知のうち7日以内に見えたセル)", "n_fresh"),
+}
+
+
+def build_state_ts(state_df, key):
+    """Per calendar day series of a last-known measure: numerator / (n_green + n_snow); None when no cell was ever seen."""
+    label, num = STATE_TS[key]
+    df = state_df.copy()
+    df["n_known"] = df.n_green + df.n_snow
+    cols = ["n_green", "n_snow", "n_unknown", "n_invalid", "n_fresh", "n_known"]
+    parts = [add_sapporo(g.reset_index(drop=True), cols) for _, g in df.groupby("date")]
+    full = pd.concat(parts, ignore_index=True)
+    dates = sorted(full["date"].unique())
+    values = {}
+    for code, g in full.groupby("muni_code"):
+        by_date = {r.date: pct(getattr(r, num), r.n_known) for r in g.itertuples()}
+        values[code] = [by_date.get(d) for d in dates]
+    return {"label": label, "unit": "%", "min": 0, "max": 100, "dates": dates, "values": values}
+
+
 def pct(num, den):
     return None if den == 0 else round(100 * num / den, 1)
 
@@ -124,6 +146,13 @@ def main():
         for key in TS_METRICS:
             doc = build_ts(day_df, key)
             (out / "series" / f"{key}_ts.json").write_text(json.dumps(doc, ensure_ascii=False, separators=(",", ":")))
+
+    sp0 = f"{a.ledger}/derived/state/season={season_of(ev)}.parquet"
+    if Path(sp0).exists():
+        state_df = pd.read_parquet(sp0)
+        for key in STATE_TS:
+            (out / "series" / f"{key}_ts.json").write_text(
+                json.dumps(build_state_ts(state_df, key), ensure_ascii=False, separators=(",", ":")))
 
     # last-known series from derived/state (latest date): snow rate among cells seen clear, and freshness
     sp = f"{a.ledger}/derived/state/season={season_of(ev)}.parquet"
