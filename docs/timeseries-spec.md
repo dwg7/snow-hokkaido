@@ -60,6 +60,13 @@ Not done yet:
 - Two modes must stay separate: "observed that day" (events/obs) vs "last known as of that day" (pixel fold, always with age).
 - History starts at the first ingested scene. Earlier Sentinel-2 scenes exist in the archive and the fold accepts them, but the censored flag ("first clear observation is snow") depends on where the record starts.
 
+## 8. Last-known products (implemented: `src/make_state.py`)
+
+- `make_state.py --upto <JST date>` replays the obs log from the first day of the season with `pixel.Folder`, one calendar day at a time (days without obs only advance the age). For every day it writes the `derived/state` rows (municipality x date: `n_green`, `n_snow`, `n_unknown`, `n_invalid`, `n_fresh`, `age_median`), the raster PMTiles `state-<date>.pmtiles`, and for the last day the cell ledger as a 6-band uint16 COG (`pixel/season=YYYY/<date>.tif`, a git-ignored cache). Invariant tested: `n_green + n_snow + n_unknown + n_invalid = n_land`.
+- Display palette index per cell: 0 transparent (never seen clear, or masked), 1-5 green and 6-10 snow, each from fresh to old. **Age buckets (proposal, provisional): <=1, <=3, <=7, <=14 days, older.** Reason: typical revisit gaps are 2-3 days with 5 at most (STAC, Aug-Oct 2026), so the first buckets mean "seen at the last or the one before pass"; clouds stretch the real gap. `n_fresh` uses 7 days (D7, provisional).
+- Overviews take the highest rank per 2x2 block: snow > green, fresher > older.
+- Not decided: whether old snow/green should expire to "unknown" after some days (D7); for now it never expires, it only fades.
+
 ## Decision log
 
 | item | status |

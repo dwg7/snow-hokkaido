@@ -110,3 +110,34 @@ def test_invalid_cells_are_masked():
     led = fold([o], valid=valid)
     assert led["last_clear_snow_day"].tolist() == [d(10, 10), 0]
     assert state(led, valid).tolist() == [STATE_SNOW, STATE_INVALID]
+
+
+def test_folder_matches_fold_for_random_sequences():
+    from pixel import Folder
+    rng = np.random.default_rng(3)
+    for _ in range(20):
+        n_days = int(rng.integers(1, 8))
+        days = sorted(rng.choice(np.arange(1, 60), n_days, replace=False).tolist())
+        shape = (6,)
+        per_day = {d: rng.integers(0, 5, shape).astype(np.uint8) for d in days}
+        seq = [Obs(datetime(2026, 8, 1, 1, 30, tzinfo=UTC) + __import__("datetime").timedelta(days=d - 1), per_day[d]) for d in days]
+        ref = fold(seq)
+        f = Folder(shape)
+        for d in days:
+            f.update(d, per_day[d])
+        led = f.ledger()
+        assert all((led[k] == ref[k]).all() for k in ref)
+
+
+def test_state_index_buckets_and_ordering():
+    from pixel import AGE_BUCKETS, state_index
+    led = fold([obs(10, 10, 3), obs(10, 12, 4)])
+    today = d(10, 12)
+    assert state_index(led, today)[0] == 1 + 5 + 0  # snow, fresh
+    assert state_index(led, today + 3)[0] == 6 + 1  # age 3 -> second bucket
+    assert state_index(led, today + 30)[0] == 6 + 4  # oldest bucket
+    green = fold([obs(10, 10, 3)])
+    assert state_index(green, d(10, 10))[0] == 1
+    assert state_index(fold([obs(10, 10, 1)]), d(10, 10))[0] == 0  # never seen clear -> transparent
+    masked = state_index(led, today, valid=np.array([False]))
+    assert masked[0] == 0

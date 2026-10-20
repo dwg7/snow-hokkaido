@@ -19,3 +19,6 @@ docs-data:
 
 view-tiles date:
     uv run --with rasterio --with numpy --with pyproj --with pillow --with pmtiles python src/make_view_tiles.py --date {{date}}
+
+state upto *args:
+    uv run --with rasterio --with numpy --with pandas --with pyarrow --with pyproj --with pillow --with pmtiles python src/make_state.py --upto {{upto}} {{args}}

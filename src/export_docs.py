@@ -13,15 +13,21 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import rasterio
+import shapely
 from PIL import Image
 from pyproj import Transformer
-from shapely.geometry import box, mapping
+from shapely.geometry import mapping
 from shapely.ops import unary_union
 
 # obs class -> RGBA (0 no data, 1 cloud, 2 shadow, 3 green, 4 snow)
 # Alpha is 0 or 255 only: partial alpha / raster-opacity < 1 rendered black in the embedded browser.
 PALETTE = {0: (0, 0, 0, 0), 1: (235, 235, 245, 255), 2: (70, 50, 110, 255),
            3: (110, 175, 110, 255), 4: (40, 150, 255, 255)}
+
+
+def season_of(ev):
+    d = ev["obs_start_utc"].iloc[0].tz_convert("Asia/Tokyo")
+    return d.year if d.month >= 8 else d.year - 1
 
 
 def pct(num, den):
@@ -73,6 +79,26 @@ def main():
                "values": values, "notes": notes, "formula": formula}
         (out / "series" / f"{key}.json").write_text(json.dumps(doc, ensure_ascii=False, indent=1))
 
+    # last-known series from derived/state (latest date): snow rate among cells seen clear, and freshness
+    sp = f"{a.ledger}/derived/state/season={season_of(ev)}.parquet"
+    if Path(sp).exists():
+        st = pd.read_parquet(sp)
+        st = st[st.date == st.date.max()]
+        known = st.n_green + st.n_snow
+        for key, label, num, den_note in (
+            ("snow_rate_last", "積雪率・最終既知 (見えたことのあるセル中)", st.n_snow, "n_snow / (n_green + n_snow)"),
+            ("freshness", "鮮度 (最終既知のうち7日以内に見えたセル)", st.n_fresh, "n_fresh / (n_green + n_snow)"),
+        ):
+            values, notes = {}, {}
+            for r, kn in zip(st.itertuples(), known):
+                if kn == 0:
+                    continue
+                n = r.n_snow if key == "snow_rate_last" else r.n_fresh
+                values[r.muni_code] = round(100 * n / kn, 1)
+                notes[r.muni_code] = f"{n:,} / {kn:,} セル、古さの中央値 {r.age_median:.0f} 日、一度も見えていない {r.n_unknown:,} セル"
+            doc = {"label": label, "unit": "%", "asOf": st.date.iloc[0], "min": 0, "max": 100, "values": values, "notes": notes, "formula": den_note}
+            (out / "series" / f"{key}.json").write_text(json.dumps(doc, ensure_ascii=False, indent=1))
+
     # class raster -> RGBA PNG, with geographic corners
     obs_path = sorted(glob.glob(f"{a.ledger}/obs/season=*/*/*/459-186.tif"))[-1]  # stage-1 tile, latest pass
     with rasterio.open(obs_path) as d:
@@ -83,20 +109,20 @@ def main():
     to_ll = Transformer.from_crs(3857, 4326, always_xy=True)
     (w, n), (e, s) = to_ll.transform(l, t), to_ll.transform(r_, b)
 
-    # municipality outlines clipped to the tile, lightly simplified
+    # municipality polygons for all of Hokkaido (hit-testing and popups), simplified to about 100 m
     gdf = gpd.read_file(a.n03)
-    ext = box(w, s, e, n)
-    gdf = gdf[gdf.intersects(ext)]
+    gdf = gdf[gdf["N03_007"].notna()]
     master = pd.read_parquet(f"{a.ledger}/muni/master.parquet").set_index("muni_code")
     feats = []
     for code, g in gdf.groupby("N03_007"):
         if code not in master.index:
             continue
-        geom = unary_union(list(g.geometry)).intersection(ext).simplify(0.0002)
+        geom = shapely.set_precision(unary_union(list(g.geometry)).simplify(0.001, preserve_topology=True), 1e-4)
         feats.append({"type": "Feature", "geometry": mapping(geom),
                       "properties": {"code": code, "name": master.loc[code, "name"]}})
-    (out / "muni-stage1.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats},
-                                                       ensure_ascii=False, separators=(",", ":")))
+    (out / "muni.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats},
+                                                 ensure_ascii=False, separators=(",", ":")))
+    (out / "muni-stage1.geojson").unlink(missing_ok=True)
 
     meta = {"tile": "9/459/186", "asOf": as_of, "scene": scene, "bbox": [w, s, e, n],
             "coordinates": [[w, n], [e, n], [e, s], [w, s]],

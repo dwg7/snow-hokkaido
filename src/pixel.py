@@ -31,6 +31,56 @@ def day_index(start_utc: datetime) -> int:
     return (d - season_start(d)).days + 1
 
 
+class Folder:
+    """Incremental form of fold(): feed one day at a time, in ascending day order.
+
+    update(day, day_cls) takes the per-cell class of that day, where only clear observations (3 green, 4 snow)
+    matter (reduce several passes of a day to the latest clear one before calling). The result after feeding days
+    1..k equals fold() over the same observations, so a saved snapshot is only a cache of this replay.
+    """
+
+    def __init__(self, shape, valid=None):
+        self.active = np.ones(shape, bool) if valid is None else valid
+        self.first_snow = np.zeros(shape, np.uint16)
+        self.confirm = np.zeros(shape, np.uint8)
+        self.last_nosnow = np.zeros(shape, np.uint16)
+        self.last_snow = np.zeros(shape, np.uint16)
+        self.last_any = np.zeros(shape, np.uint16)
+        self.flags = np.zeros(shape, np.uint8)
+        self.seen_clear = np.zeros(shape, bool)
+        self.first_clear_snow_day = np.zeros(shape, np.uint16)  # first clear-snow day, kept until confirmed
+        self.last_day = 0
+
+    def update(self, day, day_cls):
+        if day <= self.last_day:
+            raise ValueError(f"days must ascend: {day} after {self.last_day}")
+        self.last_day = day
+        snow = (day_cls == CLEAR_SNOW) & self.active
+        nosnow = (day_cls == CLEAR_NOSNOW) & self.active
+        clear = snow | nosnow
+        # censored: the cell's first clear observation in the log is snow
+        self.flags[snow & ~self.seen_clear] |= FLAG_CENSORED
+        self.seen_clear |= clear
+        self.last_any[clear] = day
+        self.last_snow[snow] = day
+        self.last_nosnow[nosnow] = day
+        newly_first = snow & (self.confirm == 0)
+        self.first_clear_snow_day[newly_first] = day
+        self.confirm[snow] = np.minimum(self.confirm[snow] + 1, 255)
+        confirmed_now = snow & (self.confirm >= 2) & (self.first_snow == 0)
+        self.first_snow[confirmed_now] = self.first_clear_snow_day[confirmed_now]
+
+    def ledger(self):
+        return {
+            "first_snow_day": self.first_snow,
+            "snow_confirm_n": self.confirm,
+            "last_clear_nosnow_day": self.last_nosnow,
+            "last_clear_snow_day": self.last_snow,
+            "last_clear_any_day": self.last_any,
+            "flags": self.flags,
+        }
+
+
 def fold(obs, upto_day=None, valid=None):
     """Fold observations into per-cell ledger arrays.
 
@@ -43,15 +93,6 @@ def fold(obs, upto_day=None, valid=None):
     if not obs:
         raise ValueError("fold needs at least one observation to know the grid shape")
     shape = obs[0].cls.shape
-    first_snow = np.zeros(shape, np.uint16)
-    confirm = np.zeros(shape, np.uint8)
-    last_nosnow = np.zeros(shape, np.uint16)
-    last_snow = np.zeros(shape, np.uint16)
-    last_any = np.zeros(shape, np.uint16)
-    flags = np.zeros(shape, np.uint8)
-    seen_clear = np.zeros(shape, bool)
-    snow_days_first = np.zeros(shape, np.uint16)  # first clear-snow day, kept until confirmed
-
     # one observation per cell per day: the latest pass that saw the cell clear
     by_day = {}
     for o in obs:
@@ -61,33 +102,10 @@ def fold(obs, upto_day=None, valid=None):
         cur = by_day.setdefault(d, np.zeros(shape, np.uint8))
         clear = (o.cls == CLEAR_NOSNOW) | (o.cls == CLEAR_SNOW)
         cur[clear] = o.cls[clear]  # obs are time-sorted, so later clear passes overwrite earlier ones
-
-    active = np.ones(shape, bool) if valid is None else valid
+    folder = Folder(shape, valid)
     for d in sorted(by_day):
-        day_cls = by_day[d]
-        snow = (day_cls == CLEAR_SNOW) & active
-        nosnow = (day_cls == CLEAR_NOSNOW) & active
-        clear = snow | nosnow
-        # censored: the cell's first clear observation in the log is snow
-        flags[snow & ~seen_clear] |= FLAG_CENSORED
-        seen_clear |= clear
-        last_any[clear] = d
-        last_snow[snow] = d
-        last_nosnow[nosnow] = d
-        newly_first = snow & (confirm == 0)
-        snow_days_first[newly_first] = d
-        confirm[snow] = np.minimum(confirm[snow] + 1, 255)
-        confirmed_now = snow & (confirm >= 2) & (first_snow == 0)
-        first_snow[confirmed_now] = snow_days_first[confirmed_now]
-
-    return {
-        "first_snow_day": first_snow,
-        "snow_confirm_n": confirm,
-        "last_clear_nosnow_day": last_nosnow,
-        "last_clear_snow_day": last_snow,
-        "last_clear_any_day": last_any,
-        "flags": flags,
-    }
+        folder.update(d, by_day[d])
+    return folder.ledger()
 
 
 def state(ledger, valid=None):
@@ -105,3 +123,22 @@ def age_days(ledger, today_day):
     """Days since the cell was last seen clear; -1 where never seen."""
     last = ledger["last_clear_any_day"].astype(np.int32)
     return np.where(last > 0, today_day - last, -1)
+
+
+# Display palette index of the "last known" map: 0 transparent (unknown / invalid), then state x age bucket.
+AGE_BUCKETS = (1, 3, 7, 14)  # age <= 1, <= 3, <= 7, <= 14 days; older falls in the last bucket (5 buckets)
+N_BUCKETS = len(AGE_BUCKETS) + 1
+
+
+def state_index(ledger, today_day, valid=None):
+    """uint8 per cell: 0 unknown/invalid, 1..5 green fresh->old, 6..10 snow fresh->old."""
+    st = state(ledger, valid)
+    age = age_days(ledger, today_day)
+    bucket = np.full(age.shape, N_BUCKETS - 1, np.int32)
+    for i in range(len(AGE_BUCKETS) - 1, -1, -1):
+        bucket[age <= AGE_BUCKETS[i]] = i
+    idx = np.zeros(st.shape, np.uint8)
+    green, snow = st == STATE_GREEN, st == STATE_SNOW
+    idx[green] = 1 + bucket[green]
+    idx[snow] = 1 + N_BUCKETS + bucket[snow]
+    return idx
