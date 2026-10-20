@@ -231,6 +231,7 @@ def main():
     ap.add_argument("--cellmap", default="ledger/grid/cellmap.tif")
     ap.add_argument("--out", default="ledger")
     ap.add_argument("--workers", type=int, default=4, help="parallel pass x tile jobs (about 1.5 GB RAM each)")
+    ap.add_argument("--force", action="store_true", help="rebuild files that already exist (default: skip complete ones)")
     ap.add_argument("--dry-run", action="store_true", help="print the plan and stop")
     a = ap.parse_args()
 
@@ -261,9 +262,22 @@ def main():
             print(" ", dt, t, [c["properties"]["grid:code"] for c in cover])
         return
 
+    def done_already(out):
+        # a complete earlier result is reused (resume after an interruption); an unreadable file is rebuilt
+        if a.force or not out.exists():
+            return False
+        try:
+            with rasterio.open(out) as d:
+                return d.count == 3 and "obs_start_utc" in d.tags()
+        except Exception:
+            return False
+
     def run_one(job):
         dt, (tx, ty), cover = job
         t0 = time.time()
+        out = Path(a.out) / "obs" / f"season={season}" / a.date / dt / f"{tx}-{ty}.tif"
+        if done_already(out):
+            return f"  {dt} {tx}/{ty}: exists, skipped"
         merged, used = None, []
         for it in cover:
             r = process_granule(it, tx, ty)
@@ -280,7 +294,6 @@ def main():
                 merged["qc"][k] += r["qc"][k]
         if merged is None or not (merged["cls"] > 0).any():
             return f"  {dt} {tx}/{ty}: nothing scanned, skipped"
-        out = Path(a.out) / "obs" / f"season={season}" / a.date / dt / f"{tx}-{ty}.tif"
         write_obs(out, tx, ty, merged, used)
         vals, cnt = np.unique(merged["cls"], return_counts=True)
         return f"  {dt} {tx}/{ty}: {len(used)} granule(s) {dict(zip(vals.tolist(), cnt.tolist()))} {time.time() - t0:.0f}s"

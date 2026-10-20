@@ -28,7 +28,7 @@
         openmct.install(openmct.plugins.LocalStorage());
         openmct.install(openmct.plugins.UTCTimeSystem());
         openmct.install(openmct.plugins.Espresso());
-        openmct.install(SnowHokkaidoPlugin({ dataUrl: './data/' }));
+        openmct.install(SnowHokkaidoPlugin({ dataUrl: './data/', viewUrl: 'https://data.source.coop/smartmaps/foil4gr1/snow-hokkaido/view/' }));
         openmct.start('#app');
       })();
     </script>

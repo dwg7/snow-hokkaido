@@ -25,7 +25,7 @@ import rasterio
 from rasterio.windows import from_bounds
 
 
-def build_obs_lite(ledger, staging):
+def build_obs_lite(ledger, staging, days=None):
     """One COG per pass: mosaic the pass's z9 tile files onto the cellmap grid, keep class and clear_pct."""
     with rasterio.open(f"{ledger}/grid/cellmap.tif") as cm:
         h, w, tf, crs = cm.height, cm.width, cm.transform, cm.crs
@@ -33,6 +33,8 @@ def build_obs_lite(ledger, staging):
     passes = defaultdict(list)
     for f in sorted(glob.glob(f"{ledger}/obs/season=*/*/*/*.tif")):
         p = Path(f)
+        if days and p.parts[-3] not in days:
+            continue
         passes[(p.parts[-4], p.parts[-3], p.parent.name)].append(f)  # season=, JST date, datatake
     out = []
     for (season, day, datatake), files in sorted(passes.items()):
@@ -137,6 +139,7 @@ def main():
     ap.add_argument("--dest", default="s3://smartmaps/foil4gr1/snow-hokkaido/", help="S3 destination prefix (check before --upload)")
     ap.add_argument("--profile", default="source-coop", help="AWS CLI profile (its credential_process and endpoint_url are used)")
     ap.add_argument("--endpoint", default="https://data.source.coop", help="S3 endpoint URL")
+    ap.add_argument("--days", help="comma-separated JST dates to include in obs-lite (default: all); use it to skip days still being processed")
     ap.add_argument("--upload", action="store_true", help="really upload (default: dry run)")
     a = ap.parse_args()
 
@@ -144,7 +147,7 @@ def main():
     if staging.exists():
         shutil.rmtree(staging)
     staging.mkdir(parents=True)
-    files = build_obs_lite(a.ledger, staging) + copy_plain(a.ledger, staging, a.docs)
+    files = build_obs_lite(a.ledger, staging, set(a.days.split(",")) if a.days else None) + copy_plain(a.ledger, staging, a.docs)
     (staging / "README.md").write_text(DATA_README)
     files.append(staging / "README.md")
 

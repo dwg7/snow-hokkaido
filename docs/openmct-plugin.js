@@ -23,6 +23,12 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
   'use strict';
   const NS = 'snow';
   const dataUrl = (options && options.dataUrl) || './data/';
+  // Where the per-date raster PMTiles and view/dates.json live. The published copy is on Source Cooperative; the local
+  // copy under dataUrl is the fallback. Override with ?viewbase=<url ending in /> (e.g. ./data/view/ for local work).
+  const viewBases = (() => {
+    const q = new URLSearchParams(location.search).get('viewbase');
+    return [q || (options && options.viewUrl), dataUrl + 'view/'].filter(Boolean);
+  })();
   // Basemap: bvmap-starlight (GSI optimized vector tiles), served by stars.optgeo.org (CORS allowed).
   const STYLE_URL = (options && options.styleUrl) || 'https://stars.optgeo.org/style/bvmap-starlight.json';
   const TABULAR = [
@@ -69,13 +75,22 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
     }
   }
 
+  // Try each base in turn (remote first, then the local copy); remember which one answered.
+  function loadViewIndex() {
+    const tryBase = (i) => fetch(new URL(viewBases[i] + 'dates.json', document.baseURI).href, { cache: 'no-store' })
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then((j) => Object.assign(j, { base: viewBases[i] }))
+      .catch((err) => { if (i + 1 < viewBases.length) return tryBase(i + 1); throw err; });
+    return tryBase(0);
+  }
+
   const AGE_LABELS = ['〜1', '2–3', '4–7', '8–14', '15〜'];  // days since the cell was last seen clear (bucket edges: pixel.AGE_BUCKETS)
 
   function mapView(host, state) {
     ensurePmtiles();
     const wrap = el('div', 'sh-map');
     host.appendChild(wrap);
-    Promise.all([fetchJson('stage1.json'), fetchJson('view/dates.json')]).then(([meta, view]) => {
+    Promise.all([fetchJson('stage1.json'), loadViewIndex()]).then(([meta, view]) => {
       if (state.disposed) return;
       const map = state.map = new maplibregl.Map({
         container: wrap,
@@ -100,7 +115,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
         if (map.getLayer('obs')) map.removeLayer('obs');
         if (map.getSource('obs')) map.removeSource('obs');
         const file = view.templates[mode.value].replace('{date}', dates()[mode.index]);
-        const url = new URL(dataUrl + 'view/' + file, document.baseURI).href;
+        const url = new URL(view.base + file, document.baseURI).href;
         map.addSource('obs', { type: 'raster', url: 'pmtiles://' + url, tileSize: 256 });
         map.addLayer({ id: 'obs', type: 'raster', source: 'obs', paint: { 'raster-resampling': 'nearest' } }, rasterBefore);
         if (cb && !cb.checked) map.setLayoutProperty('obs', 'visibility', 'none');

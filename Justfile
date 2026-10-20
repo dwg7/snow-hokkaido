@@ -32,3 +32,13 @@ state upto *args:
 # Build the staging directory for Source Cooperative and print the plan (dry run). Add --upload to really sync.
 publish *args:
     uv run --with rasterio --with numpy python src/publish.py {{args}}
+
+# Process every JST day from `newest` back to `oldest`, newest first (so the latest days fill in first). Resumable.
+obs-range newest oldest *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    d="{{newest}}"
+    while [[ ! "$d" < "{{oldest}}" ]]; do
+      echo "=== $d"; just obs "$d" {{args}}
+      d=$(date -j -v-1d -f %Y-%m-%d "$d" +%Y-%m-%d)
+    done
