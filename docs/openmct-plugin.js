@@ -54,15 +54,23 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
     }).catch(() => {});
   }
 
+  function ensurePmtiles() {
+    if (!window.__pmtilesProtocol) {
+      window.__pmtilesProtocol = new pmtiles.Protocol();
+      maplibregl.addProtocol('pmtiles', window.__pmtilesProtocol.tile);
+    }
+  }
+
   function mapView(host, state) {
+    ensurePmtiles();
     const wrap = el('div', 'sh-map');
     host.appendChild(wrap);
-    Promise.all([fetchJson('stage1.json'), fetchJson('muni-stage1.geojson'), fetchJson('series/snow_rate.json')]).then(([meta, muni, snow]) => {
+    Promise.all([fetchJson('stage1.json'), fetchJson('muni-stage1.geojson'), fetchJson('series/snow_rate.json'), fetchJson('view/dates.json')]).then(([meta, muni, snow, view]) => {
       if (state.disposed) return;
       const map = state.map = new maplibregl.Map({
         container: wrap,
         style: STYLE_URL,
-        bounds: [[meta.bbox[0], meta.bbox[1]], [meta.bbox[2], meta.bbox[3]]],
+        bounds: [[view.bbox[0], view.bbox[1]], [view.bbox[2], view.bbox[3]]],
         fitBoundsOptions: { padding: 20 },
         maxZoom: 17
       });
@@ -70,10 +78,13 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
       map.on('style.load', () => {
         // Put overlays under the basemap's labels so place names stay readable.
         const firstSymbol = (map.getStyle().layers.find((l) => l.type === 'symbol') || {}).id;
-        // 'raster-resampling': 'nearest' rendered the layer black in the embedded browser (cause unconfirmed;
-        // other browsers not checked), so the overlay uses 'linear'.
-        map.addSource('obs', { type: 'image', url: dataUrl + 'obs-class.png', coordinates: meta.coordinates });
-        map.addLayer({ id: 'obs', type: 'raster', source: 'obs', paint: { 'raster-resampling': 'linear' } }, firstSymbol);
+        // Display layer: one raster PMTiles per JST date (z4-z10; z10 pixels are the 112 m cells, MapLibre overzooms
+        // beyond). 'nearest' keeps cell edges crisp when overzoomed; it rendered black for an image source in the
+        // embedded browser (cause unconfirmed), so check the tile layer in other browsers too.
+        const day = view.latest;
+        const pmUrl = new URL(dataUrl + 'view/' + view.template.replace('{date}', day), document.baseURI).href;
+        map.addSource('obs', { type: 'raster', url: 'pmtiles://' + pmUrl, tileSize: 256 });
+        map.addLayer({ id: 'obs', type: 'raster', source: 'obs', paint: { 'raster-resampling': 'nearest' } }, firstSymbol);
         map.addSource('muni', { type: 'geojson', data: muni });
         map.addLayer({ id: 'muni-fill', type: 'fill', source: 'muni', paint: { 'fill-color': '#000000', 'fill-opacity': 0 } }, firstSymbol);
         map.addLayer({ id: 'muni-line', type: 'line', source: 'muni', paint: { 'line-color': '#444444', 'line-width': 1.2, 'line-dasharray': [3, 2] } }, firstSymbol);
@@ -87,14 +98,14 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
         map.on('mouseleave', 'muni-fill', () => { map.getCanvas().style.cursor = ''; });
       });
       const legend = el('div', 'sh-legend');
-      legend.appendChild(el('div', 'sh-legend-t', meta.asOf));
+      legend.appendChild(el('div', 'sh-legend-t', view.latest + ' (JST)'));
       for (const k of ['4', '3', '2', '1']) {
         const row = el('div', 'sh-legend-r');
         const sw = el('i'); sw.style.background = meta.colors[k];
         row.appendChild(sw); row.appendChild(document.createTextNode(meta.classes[k]));
         legend.appendChild(row);
       }
-      legend.appendChild(el('div', 'sh-legend-n', '112 m セル / 透明 = 走査外'));
+      legend.appendChild(el('div', 'sh-legend-n', '112 m セル / 透明 = 走査外 / 点線 = 段階1の市町村界'));
       const tg = el('label', 'sh-legend-n'); const cb = document.createElement('input');
       cb.type = 'checkbox'; cb.checked = true;
       cb.addEventListener('change', () => { if (state.map && state.map.getLayer('obs')) state.map.setLayoutProperty('obs', 'visibility', cb.checked ? 'visible' : 'none'); });

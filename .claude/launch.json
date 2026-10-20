@@ -1,6 +1,14 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "docs", "runtimeExecutable": "python3", "runtimeArgs": ["-m", "http.server", "8765", "--directory", "docs"], "port": 8765 }
+    {
+      "name": "docs",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd docs && uv run --with rangehttpserver python -m RangeHTTPServer 8765"
+      ],
+      "port": 8765
+    }
   ]
 }

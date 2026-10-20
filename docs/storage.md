@@ -7,6 +7,8 @@
 - Speed: about 50-70 s per tile job (network-bound), 4 jobs in parallel, about 20 min for the 41-file pass on one laptop.
 - STAC count for the stage-1 area: 25 items between Sep 1 and Oct 18 (about 0.5 per day, about 190 per year, including same-day duplicates of different passes).
 
+- Display layer (class only, raster PMTiles z4-z10) for the same pass: **0.41 MB** per date; the same mosaic as one COG with overviews: 0.29 MB; with `ndsi_q` added: 7.4 MB. So `ndsi_q` is what makes obs large; the map does not need it.
+
 ## Extrapolation (assumptions: about 190 acquisitions per tile per year, 62 land tiles, 155 KB per file)
 
 | item | per year |
@@ -14,6 +16,7 @@
 | obs files | about 11,800 |
 | obs size | about 1.8 GB (plausible range 1.5-3 GB; winter unmeasured) |
 | events (194 municipalities x about 190 passes) | about 37,000 rows, a few MB of Parquet (not measured) |
+| display layer, observed mode (one PMTiles per date) | about 190 x 0.4 MB = about 80 MB |
 | pixel cache (latest snapshot only) | tens of MB (not measured) |
 
 Rebuilding a year of obs from the public archive at the measured speed would take about 63 hours (190 passes x 20 min), so a copy is worth keeping, but loss is not fatal: obs is derived from public data (the offset story shows the archive can be reprocessed, which is the argument for keeping our own copy).

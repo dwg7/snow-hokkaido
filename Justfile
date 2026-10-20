@@ -12,7 +12,10 @@ events +obs:
     uv run --with rasterio --with numpy --with pandas --with pyarrow python src/make_events.py --obs {{obs}}
 
 test:
-    uv run --with pytest --with rasterio --with numpy --with pandas --with pyarrow pytest -q
+    uv run --with pytest --with rasterio --with numpy --with pandas --with pyarrow --with pmtiles --with pillow --with pyproj pytest -q
 
 docs-data:
     uv run {{deps}} --with pillow python src/export_docs.py
+
+view-tiles date:
+    uv run --with rasterio --with numpy --with pyproj --with pillow --with pmtiles python src/make_view_tiles.py --date {{date}}
