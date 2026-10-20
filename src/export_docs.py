@@ -1,4 +1,6 @@
-"""Export light derived files for the docs/ site (Pages): series JSON (tabularmaps contract), class PNG, municipality GeoJSON.
+"""Export light derived files for the docs/ site (Pages): series JSON (tabularmaps contract) and stage1.json (legend, as-of).
+
+No municipality boundary geometry is exported (derived from MLIT N03; see README).
 
 Series contract (tabularmaps/do): {label, unit, asOf, min, max, values: {<5-digit code>: number}, notes: {code: str}}.
 Rates are computed here from event counts; counts are the stored fact.
@@ -6,22 +8,38 @@ Rates are computed here from event counts; counts are the stored fact.
 import argparse
 import glob
 import json
-import math
 from pathlib import Path
 
-import geopandas as gpd
-import numpy as np
 import pandas as pd
-import rasterio
-from PIL import Image
-from pyproj import Transformer
-from shapely.geometry import box, mapping
-from shapely.ops import unary_union
 
 # obs class -> RGBA (0 no data, 1 cloud, 2 shadow, 3 green, 4 snow)
 # Alpha is 0 or 255 only: partial alpha / raster-opacity < 1 rendered black in the embedded browser.
 PALETTE = {0: (0, 0, 0, 0), 1: (235, 235, 245, 255), 2: (70, 50, 110, 255),
            3: (110, 175, 110, 255), 4: (40, 150, 255, 255)}
+
+
+def season_of(ev):
+    d = ev["obs_start_utc"].iloc[0].tz_convert("Asia/Tokyo")
+    return d.year if d.month >= 8 else d.year - 1
+
+
+WARDS = [f"011{i:02d}" for i in range(1, 11)]  # N03 has the ten Sapporo wards; the tabular layout also uses 01100 for the city
+
+
+def add_sapporo(df, count_cols, weight_col=None, mean_col=None):
+    """Append a Sapporo city row (code 01100) that sums the ten wards, keeping the ward rows."""
+    w = df[df.muni_code.isin(WARDS)]
+    if w.empty or (df.muni_code == "01100").any():
+        return df
+    row = {c: w[c].sum() for c in count_cols}
+    for c in df.columns:
+        if c not in row:
+            row[c] = w[c].iloc[0] if c in ("date", "obs_start_utc", "algo_version") else None
+    row["muni_code"] = "01100"
+    if mean_col is not None:  # weighted mean of a per-ward statistic (age_median is only approximate for the city)
+        wt = w[weight_col]
+        row[mean_col] = float((w[mean_col] * wt).sum() / wt.sum()) if wt.sum() else None
+    return pd.concat([df, pd.DataFrame([row])], ignore_index=True)
 
 
 def pct(num, den):
@@ -31,7 +49,6 @@ def pct(num, den):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--ledger", default="ledger")
-    ap.add_argument("--n03", default="data/raw/n03-20260101/N03-20260101_01.shp")
     ap.add_argument("--out", default="docs/data")
     a = ap.parse_args()
     out = Path(a.out)
@@ -39,14 +56,17 @@ def main():
 
     ev_path = sorted(glob.glob(f"{a.ledger}/events/season=*/part-*.parquet"))[-1]
     ev = pd.read_parquet(ev_path)
+    ev = add_sapporo(ev, ["n_land", "n_scanned", "n_cloud", "n_shadow", "n_clear", "n_clear_canopy", "n_clear_valid", "n_snow", "n_marginal", "n_nosnow"])
     as_of_utc = ev["obs_start_utc"].iloc[0]
     as_of = as_of_utc.tz_convert("Asia/Tokyo").strftime("%Y-%m-%d %H:%M JST")
-    scene = ev["sources"].iloc[0][0]
+    n_gran = len(ev["sources"].iloc[0])
+    scene = f"{n_gran} granules"  # keep asOf short; the full ids are in events.sources
 
     series = {
         "snow_rate": ("積雪率 (確認できたセル中)", "n_snow / n_clear_valid"),
         "cloud_rate": ("雲の割合 (走査できたセル中)", "n_cloud / n_scanned"),
-        "visible_rate": ("見えた割合 (陸セル中)", "n_clear_valid / n_land"),
+        "visible_rate": ("見えた割合 (陸セル全体中)", "n_clear_valid / n_land"),
+        "scan_rate": ("走査できた割合 (陸セル全体中)", "n_scanned / n_land"),
     }
     for key, (label, formula) in series.items():
         values, notes = {}, {}
@@ -58,6 +78,9 @@ def main():
             elif key == "cloud_rate":
                 v = pct(r.n_cloud, r.n_scanned)
                 note = f"{r.n_cloud:,} / {r.n_scanned:,} セル"
+            elif key == "scan_rate":
+                v = pct(r.n_scanned, r.n_land)
+                note = f"{r.n_scanned:,} / {r.n_land:,} セル"
             else:
                 v = pct(r.n_clear_valid, r.n_land)
                 note = f"{r.n_clear_valid:,} / {r.n_land:,} セル"
@@ -68,33 +91,29 @@ def main():
                "values": values, "notes": notes, "formula": formula}
         (out / "series" / f"{key}.json").write_text(json.dumps(doc, ensure_ascii=False, indent=1))
 
-    # class raster -> RGBA PNG, with geographic corners
-    obs_path = sorted(glob.glob(f"{a.ledger}/obs/season=*/*_s2.tif"))[-1]
-    with rasterio.open(obs_path) as d:
-        cls = d.read(1)
-        l, b, r_, t = d.bounds
-    lut = np.array([PALETTE[i] for i in range(5)], dtype=np.uint8)
-    Image.fromarray(lut[np.clip(cls, 0, 4)], "RGBA").save(out / "obs-class.png", optimize=True)
-    to_ll = Transformer.from_crs(3857, 4326, always_xy=True)
-    (w, n), (e, s) = to_ll.transform(l, t), to_ll.transform(r_, b)
+    # last-known series from derived/state (latest date): snow rate among cells seen clear, and freshness
+    sp = f"{a.ledger}/derived/state/season={season_of(ev)}.parquet"
+    if Path(sp).exists():
+        st = pd.read_parquet(sp)
+        st = st[st.date == st.date.max()].copy()
+        st["n_known"] = st.n_green + st.n_snow
+        st = add_sapporo(st, ["n_green", "n_snow", "n_unknown", "n_invalid", "n_fresh", "n_known"], weight_col="n_known", mean_col="age_median")
+        known = st.n_green + st.n_snow
+        for key, label, num, den_note in (
+            ("snow_rate_last", "積雪率・最終既知 (見えたことのあるセル中)", st.n_snow, "n_snow / (n_green + n_snow)"),
+            ("freshness", "鮮度 (最終既知のうち7日以内に見えたセル)", st.n_fresh, "n_fresh / (n_green + n_snow)"),
+        ):
+            values, notes = {}, {}
+            for r, kn in zip(st.itertuples(), known):
+                if kn == 0:
+                    continue
+                n = r.n_snow if key == "snow_rate_last" else r.n_fresh
+                values[r.muni_code] = round(100 * n / kn, 1)
+                notes[r.muni_code] = f"{n:,} / {kn:,} セル、古さの中央値 {r.age_median:.0f} 日、一度も見えていない {r.n_unknown:,} セル"
+            doc = {"label": label, "unit": "%", "asOf": st.date.iloc[0], "min": 0, "max": 100, "values": values, "notes": notes, "formula": den_note}
+            (out / "series" / f"{key}.json").write_text(json.dumps(doc, ensure_ascii=False, indent=1))
 
-    # municipality outlines clipped to the tile, lightly simplified
-    gdf = gpd.read_file(a.n03)
-    ext = box(w, s, e, n)
-    gdf = gdf[gdf.intersects(ext)]
-    master = pd.read_parquet(f"{a.ledger}/muni/master.parquet").set_index("muni_code")
-    feats = []
-    for code, g in gdf.groupby("N03_007"):
-        if code not in master.index:
-            continue
-        geom = unary_union(list(g.geometry)).intersection(ext).simplify(0.0002)
-        feats.append({"type": "Feature", "geometry": mapping(geom),
-                      "properties": {"code": code, "name": master.loc[code, "name"]}})
-    (out / "muni-stage1.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats},
-                                                       ensure_ascii=False, separators=(",", ":")))
-
-    meta = {"tile": "9/459/186", "asOf": as_of, "scene": scene, "bbox": [w, s, e, n],
-            "coordinates": [[w, n], [e, n], [e, s], [w, s]],
+    meta = {"asOf": as_of, "scene": scene,
             "classes": {"0": "走査外", "1": "雲", "2": "影", "3": "緑 (雪なし)", "4": "雪"},
             "colors": {k: "#%02x%02x%02x" % v[:3] for k, v in PALETTE.items() if k},
             "algo_version": ev["algo_version"].iloc[0]}

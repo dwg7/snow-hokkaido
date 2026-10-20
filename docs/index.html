@@ -17,6 +17,7 @@
     </script>
     <script src="https://unpkg.com/openmct@4.3.1/dist/openmct.js"></script>
     <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+    <script src="https://unpkg.com/pmtiles@4.3.0/dist/pmtiles.js"></script>
     <div id="app"></div>
     <script src="./vendor/tabularmap/tabularmap.js"></script>
     <script src="./openmct-plugin.js"></script>
@@ -27,7 +28,7 @@
         openmct.install(openmct.plugins.LocalStorage());
         openmct.install(openmct.plugins.UTCTimeSystem());
         openmct.install(openmct.plugins.Espresso());
-        openmct.install(SnowHokkaidoPlugin({ dataUrl: './data/' }));
+        openmct.install(SnowHokkaidoPlugin({ dataUrl: './data/', viewUrl: 'https://data.source.coop/smartmaps/foil4gr1/snow-hokkaido/view/' }));
         openmct.start('#app');
       })();
     </script>

@@ -6,12 +6,16 @@
  *   no Telemetry API, no Plot, no Display Layout. Each view fetches static JSON itself.
  *
  * Tree:  root (snow.instrument, kind 'root')
- *          ├─ maplibre            MapLibre map: obs classes (image overlay) + municipality outlines
+ *          ├─ maplibre            MapLibre map: per-date raster PMTiles (last known / observed) under the basemap's line work
  *          ├─ tabular:snow_rate   tabularmaps cells coloured by a series
  *          ├─ tabular:cloud_rate
- *          └─ tabular:visible_rate
+ *          ├─ tabular:visible_rate
+ *          ├─ tabular:scan_rate
+ *          ├─ tabular:snow_rate_last
+ *          ├─ tabular:freshness
+ *          └─ about               text page: the algorithm explanation (about-algorithm.html)
  *
- * Data (all under dataUrl): stage1.json, obs-class.png, muni-stage1.geojson,
+ * Data (all under dataUrl): stage1.json, view/dates.json + view/{obs,state}-<date>.pmtiles,
  *   series/<key>.json ({label, unit, asOf, min, max, values:{code:number}, notes:{code:string}}),
  *   layout-v08.json, municipalities.json, sapporo-wards.json (tabularmaps/do).
  */
@@ -19,12 +23,21 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
   'use strict';
   const NS = 'snow';
   const dataUrl = (options && options.dataUrl) || './data/';
+  // Where the per-date raster PMTiles and view/dates.json live. The published copy is on Source Cooperative; the local
+  // copy under dataUrl is the fallback. Override with ?viewbase=<url ending in /> (e.g. ./data/view/ for local work).
+  const viewBases = (() => {
+    const q = new URLSearchParams(location.search).get('viewbase');
+    return [q || (options && options.viewUrl), dataUrl + 'view/'].filter(Boolean);
+  })();
   // Basemap: bvmap-starlight (GSI optimized vector tiles), served by stars.optgeo.org (CORS allowed).
   const STYLE_URL = (options && options.styleUrl) || 'https://stars.optgeo.org/style/bvmap-starlight.json';
   const TABULAR = [
     { key: 'snow_rate', name: '積雪率 (tabular map)' },
     { key: 'cloud_rate', name: '雲の割合 (tabular map)' },
-    { key: 'visible_rate', name: '見えた割合 (tabular map)' }
+    { key: 'visible_rate', name: '見えた割合 (tabular map)' },
+    { key: 'scan_rate', name: '走査できた割合 (tabular map)' },
+    { key: 'snow_rate_last', name: '積雪率・最終既知 (tabular map)' },
+    { key: 'freshness', name: '鮮度・7日以内に見えた割合 (tabular map)' }
   ];
 
   const fetchJson = (p) => fetch(dataUrl + p, { cache: 'no-store' }).then((r) => {
@@ -43,63 +56,160 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
     return e;
   }
 
+  const ATTRIBUTION = 'Contains modified Copernicus Sentinel data 2026 / 「国土数値情報(行政区域データ)」(国土交通省)をもとに作成(国が作成したものではありません) / 背景地図: 国土地理院最適化ベクトルタイルをもとにしたスタイル(bvmap-starlight) / データ: CC BY 4.0';
+
   function rootView(host) {
     host.appendChild(el('h2', 'sh-h', 'snow-hokkaido'));
     host.appendChild(el('p', 'sh-p', '北海道の積雪を、雲で見えなかったことも含めて記録する台帳の計器盤。左のツリーから計器を選んでください。'));
-    host.appendChild(el('p', 'sh-p', '現在は段階1 (XYZタイル 9/459/186、大雪山系を含む約56 km四方) の1シーンのみ。ほかの市町村は「無データ」です。'));
+    host.appendChild(el('p', 'sh-p sh-muted', ATTRIBUTION));
+    host.appendChild(el('p', 'sh-p', '現在は2026-10-18の1パス(北海道の広い範囲を1回で撮影した1回分)の集計です。写真に写らなかった市町村は「無データ」です。地図の計器は、セルの色の上に、背景地図の線画(海岸・川・道路・行政界)と地名を重ねて表示します。'));
     fetchJson('stage1.json').then((m) => {
       host.appendChild(el('p', 'sh-p sh-muted', '観測: ' + m.asOf + ' / ' + m.scene + ' / ' + m.algo_version + ' (暫定の判定規則)'));
     }).catch(() => {});
   }
 
+  function ensurePmtiles() {
+    if (!window.__pmtilesProtocol) {
+      window.__pmtilesProtocol = new pmtiles.Protocol();
+      maplibregl.addProtocol('pmtiles', window.__pmtilesProtocol.tile);
+    }
+  }
+
+  // Try each base in turn (remote first, then the local copy); remember which one answered.
+  function loadViewIndex() {
+    const tryBase = (i) => fetch(new URL(viewBases[i] + 'dates.json', document.baseURI).href, { cache: 'no-store' })
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then((j) => Object.assign(j, { base: viewBases[i] }))
+      .catch((err) => { if (i + 1 < viewBases.length) return tryBase(i + 1); throw err; });
+    return tryBase(0);
+  }
+
+  const AGE_LABELS = ['〜1', '2–3', '4–7', '8–14', '15〜'];  // days since the cell was last seen clear (bucket edges: pixel.AGE_BUCKETS)
+
   function mapView(host, state) {
+    ensurePmtiles();
     const wrap = el('div', 'sh-map');
     host.appendChild(wrap);
-    Promise.all([fetchJson('stage1.json'), fetchJson('muni-stage1.geojson'), fetchJson('series/snow_rate.json')]).then(([meta, muni, snow]) => {
+    Promise.all([fetchJson('stage1.json'), loadViewIndex()]).then(([meta, view]) => {
       if (state.disposed) return;
       const map = state.map = new maplibregl.Map({
         container: wrap,
         style: STYLE_URL,
-        bounds: [[meta.bbox[0], meta.bbox[1]], [meta.bbox[2], meta.bbox[3]]],
+        bounds: [[view.bbox[0], view.bbox[1]], [view.bbox[2], view.bbox[3]]],
         fitBoundsOptions: { padding: 20 },
         maxZoom: 17
       });
       map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
-      map.on('style.load', () => {
-        // Put overlays under the basemap's labels so place names stay readable.
-        const firstSymbol = (map.getStyle().layers.find((l) => l.type === 'symbol') || {}).id;
-        // 'raster-resampling': 'nearest' rendered the layer black in the embedded browser (cause unconfirmed;
-        // other browsers not checked), so the overlay uses 'linear'.
-        map.addSource('obs', { type: 'image', url: dataUrl + 'obs-class.png', coordinates: meta.coordinates });
-        map.addLayer({ id: 'obs', type: 'raster', source: 'obs', paint: { 'raster-resampling': 'linear' } }, firstSymbol);
-        map.addSource('muni', { type: 'geojson', data: muni });
-        map.addLayer({ id: 'muni-fill', type: 'fill', source: 'muni', paint: { 'fill-color': '#000000', 'fill-opacity': 0 } }, firstSymbol);
-        map.addLayer({ id: 'muni-line', type: 'line', source: 'muni', paint: { 'line-color': '#444444', 'line-width': 1.2, 'line-dasharray': [3, 2] } }, firstSymbol);
-        map.on('click', 'muni-fill', (e) => {
-          const p = e.features[0].properties;
-          const v = snow.values[p.code];
-          const html = '<b>' + p.name + '</b> (' + p.code + ')<br>' + (v == null ? '積雪率: 無データ' : '積雪率: ' + v + '%<br>' + (snow.notes[p.code] || ''));
-          new maplibregl.Popup({ closeButton: true }).setLngLat(e.lngLat).setHTML(html).addTo(map);
-        });
-        map.on('mouseenter', 'muni-fill', () => { map.getCanvas().style.cursor = 'pointer'; });
-        map.on('mouseleave', 'muni-fill', () => { map.getCanvas().style.cursor = ''; });
-      });
-      const legend = el('div', 'sh-legend');
-      legend.appendChild(el('div', 'sh-legend-t', meta.asOf));
-      for (const k of ['4', '3', '2', '1']) {
-        const row = el('div', 'sh-legend-r');
-        const sw = el('i'); sw.style.background = meta.colors[k];
-        row.appendChild(sw); row.appendChild(document.createTextNode(meta.classes[k]));
-        legend.appendChild(row);
+
+      // View state: which display layer (mode) and which date. "state" = last known state with age; "obs" = observed that day.
+      const mode = { value: view.state.length ? 'state' : 'obs', index: 0 };
+      const dates = () => view[mode.value];
+      mode.index = dates().length - 1;
+      let rasterBefore;
+
+      // The raster goes under the basemap's water fill and every line layer (coast, rivers, boundaries, roads), so line
+      // work and labels stay on top; the basemap already draws prefecture / subprefecture / municipality boundaries for
+      // the whole region. 'nearest' keeps cell edges crisp; it rendered black for an image source in the embedded
+      // browser (cause unconfirmed), so check other browsers too.
+      function showLayer() {
+        if (map.getLayer('obs')) map.removeLayer('obs');
+        if (map.getSource('obs')) map.removeSource('obs');
+        const file = view.templates[mode.value].replace('{date}', dates()[mode.index]);
+        const url = new URL(view.base + file, document.baseURI).href;
+        map.addSource('obs', { type: 'raster', url: 'pmtiles://' + url, tileSize: 256 });
+        map.addLayer({ id: 'obs', type: 'raster', source: 'obs', paint: { 'raster-resampling': 'nearest' } }, rasterBefore);
+        if (cb && !cb.checked) map.setLayoutProperty('obs', 'visibility', 'none');
+        renderLegend();
       }
-      legend.appendChild(el('div', 'sh-legend-n', '112 m セル / 透明 = 走査外'));
-      const tg = el('label', 'sh-legend-n'); const cb = document.createElement('input');
+
+      map.on('style.load', () => {
+        const layers = map.getStyle().layers;
+        rasterBefore = (layers.find((l) => l.type === 'fill' && l['source-layer'] === 'WA') || layers.find((l) => l.type === 'line') || {}).id;
+        // The basemap's topographic area fill (TpgphArea: wetland 7401, perennial snow 7402, gravel 7403) would show
+        // light-gray "snow" patches that readers could take for our data. Drop perennial snow (7402) and draw the rest
+        // below the cell raster, so the cells are never covered by it.
+        const tp = layers.find((l) => l.type === 'fill' && l['source-layer'] === 'TpgphArea');
+        if (tp) {
+          map.setFilter(tp.id, ['all', map.getFilter(tp.id), ['!=', ['get', 'vt_code'], 7402]]);
+          map.moveLayer(tp.id, rasterBefore);
+        }
+        showLayer();
+      });
+
+      const legend = el('div', 'sh-legend');
+      const legendBody = el('div');
+      const controls = el('div', 'sh-legend-n');
+      const cb = document.createElement('input');
       cb.type = 'checkbox'; cb.checked = true;
-      cb.addEventListener('change', () => { if (state.map && state.map.getLayer('obs')) state.map.setLayoutProperty('obs', 'visibility', cb.checked ? 'visible' : 'none'); });
-      tg.appendChild(cb); tg.appendChild(document.createTextNode(' セルを表示'));
-      legend.appendChild(tg);
+      cb.addEventListener('change', () => { if (map.getLayer('obs')) map.setLayoutProperty('obs', 'visibility', cb.checked ? 'visible' : 'none'); });
+      const slider = document.createElement('input');
+      slider.type = 'range'; slider.className = 'sh-slider';
+      slider.addEventListener('input', () => { mode.index = +slider.value; showLayer(); });
+
+      function renderLegend() {
+        legendBody.textContent = '';
+        legendBody.appendChild(el('div', 'sh-legend-t', dates()[mode.index] + ' (JST)'));
+        if (mode.value === 'obs') {
+          for (const k of ['4', '3', '2', '1']) {
+            const r = el('div', 'sh-legend-r');
+            const sw = el('i'); sw.style.background = view.palette.obs[+k];
+            r.appendChild(sw); r.appendChild(document.createTextNode(meta.classes[k]));
+            legendBody.appendChild(r);
+          }
+          legendBody.appendChild(el('div', 'sh-legend-n', 'その日に撮れた場所だけ。透明 = 走査外'));
+        } else {
+          const r0 = el('div', 'sh-legend-r sh-legend-head');
+          r0.appendChild(el('span', 'sh-legend-lab', '見えてから(日)'));
+          for (const l of AGE_LABELS) r0.appendChild(el('span', 'sh-legend-cell', l));
+          legendBody.appendChild(r0);
+          for (const [name, off] of [['雪', 6], ['緑 (雪なし)', 1]]) {
+            const r = el('div', 'sh-legend-r');
+            r.appendChild(el('span', 'sh-legend-lab', name));
+            for (let i = 0; i < 5; i++) { const sw = el('i', 'sh-legend-cell'); sw.style.background = view.palette.state[off + i]; r.appendChild(sw); }
+            legendBody.appendChild(r);
+          }
+          legendBody.appendChild(el('div', 'sh-legend-n', '最後に晴れて見えた状態。色が薄いほど古い。透明 = まだ一度も見えていない'));
+        }
+        slider.min = 0; slider.max = dates().length - 1; slider.value = mode.index;
+        slider.disabled = dates().length < 2;
+      }
+
+      const modes = el('div', 'sh-legend-n');
+      for (const [val, label] of [['state', '最終既知'], ['obs', '観測値']]) {
+        if (!view[val].length) continue;
+        const lab = el('label', 'sh-mode'); const rb = document.createElement('input');
+        rb.type = 'radio'; rb.name = 'sh-mode'; rb.checked = mode.value === val;
+        rb.addEventListener('change', () => { mode.value = val; mode.index = dates().length - 1; showLayer(); });
+        lab.appendChild(rb); lab.appendChild(document.createTextNode(' ' + label + ' '));
+        modes.appendChild(lab);
+      }
+      controls.appendChild(modes);
+      const sliderRow = el('div'); sliderRow.appendChild(slider);
+      controls.appendChild(sliderRow);
+      const tg = el('div'); const tgl = el('label');
+      tgl.appendChild(cb); tgl.appendChild(document.createTextNode(' セルを表示'));
+      tg.appendChild(tgl);
+      controls.appendChild(tg);
+      legend.appendChild(legendBody);
+      legend.appendChild(controls);
+      legend.appendChild(el('div', 'sh-legend-n sh-attr', 'Contains modified Copernicus Sentinel data 2026 / 国土数値情報(行政区域データ)(国土交通省)をもとに作成 / 国土地理院'));
       wrap.appendChild(legend);
+      renderLegend();
     }).catch((err) => { host.appendChild(el('p', 'sh-p', '読み込みに失敗: ' + err.message)); });
+  }
+
+  // Text page: the algorithm explanation lives in docs/about-algorithm.html (a trusted same-origin fragment).
+  function aboutView(host, state) {
+    const box = el('div', 'sh-about');
+    host.appendChild(box);
+    fetch(new URL('about-algorithm.html', document.baseURI).href, { cache: 'no-store' }).then((r) => {
+      if (!r.ok) throw new Error('about-algorithm.html ' + r.status);
+      return r.text();
+    }).then((html) => {
+      if (state.disposed) return;
+      box.innerHTML = html;
+      box.appendChild(el('p', 'sh-p sh-muted', ATTRIBUTION));
+    }).catch((err) => { box.appendChild(el('p', 'sh-p', '読み込みに失敗: ' + err.message)); });
   }
 
   function tabularView(host, state, key, name) {
@@ -110,7 +220,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
         mode: 'region', title: name, includeNorthernTerritoriesVillages: true
       });
       state.map.setSeries(series);
-      const note = el('div', 'sh-tabular-note', '値があるのは段階1の範囲に入る市町村だけです (それ以外は無データ)。範囲が一部だけの市町村は、範囲内のセルだけの値です。');
+      const note = el('div', 'sh-tabular-note', ATTRIBUTION + '。値があるのは、この1回の撮影に写った市町村です (写らなかった市町村は無データ)。一部しか写らなかった市町村は、「見えた割合」と「走査できた割合」が市町村全体に対する割合なので小さくなります。積雪率と雲の割合は、写った範囲だけの割合です。');
       host.appendChild(note);
     }).catch((err) => { host.appendChild(el('p', 'sh-p', '読み込みに失敗: ' + err.message)); });
   }
@@ -129,8 +239,9 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
     };
     add('root', 'snow-hokkaido', 'root');
     add('maplibre', '地図 (MapLibre)', 'maplibre');
+    add('about', 'アルゴリズムの説明', 'about');
     for (const t of TABULAR) add('tabular:' + t.key, t.name, 'tabular', { series: t.key });
-    const children = [{ namespace: NS, key: 'maplibre' }, ...TABULAR.map((t) => ({ namespace: NS, key: 'tabular:' + t.key }))];
+    const children = [{ namespace: NS, key: 'maplibre' }, ...TABULAR.map((t) => ({ namespace: NS, key: 'tabular:' + t.key })), { namespace: NS, key: 'about' }];
 
     openmct.objects.addRoot({ namespace: NS, key: 'root' });
     openmct.objects.addProvider(NS, {
@@ -157,6 +268,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
             const kind = domainObject.snow.kind;
             if (kind === 'root') rootView(host);
             else if (kind === 'maplibre') mapView(host, state);
+            else if (kind === 'about') aboutView(host, state);
             else tabularView(host, state, domainObject.snow.series, domainObject.name);
           },
           destroy() {
