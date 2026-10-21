@@ -9,3 +9,5 @@ __pycache__/
 /publish/
 # per-date display files are published on Source Cooperative (just view-tiles / just state rebuild them locally)
 /docs/data/view/
+# backups made before a rule migration (src/migrate_obs_rule.py)
+/ledger/obs-*/

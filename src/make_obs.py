@@ -32,10 +32,12 @@ CELL_M = 2 * ORIGIN / 2**Z
 N9 = 2 ** (Z - 9)  # cells per z9 tile edge
 STAC = "https://earth-search.aws.element84.com/v1"
 COLLECTION = "sentinel-2-c1-l2a"  # canonical (docs/timeseries-spec.md): COG metadata carries scale/offset
-ALGO_VERSION = "algo-v1-dev2"
+ALGO_VERSION = "algo-v1-dev3"
 NDSI_THRESHOLD = 0.42  # Sen2Cor value
 GREEN_MIN = 0.10  # snow also needs B03 reflectance >= this: water and dark shadow give high NDSI with low B03
 SCL_WATER = 6
+SCL_FIRST = True  # skip the B03/B11 reads for windows without any clear pixel
+SNOW_MIN_CLEAR_PCT = 80  # a cell is snow only if at least this share of its pixels was clear: snow next to cloud is doubtful (docs/validation-pixel-rule.md)
 JST = timezone(timedelta(hours=9))
 STEP = 32  # pixels between nodes of the pixel -> cell coordinate interpolation grid
 
@@ -144,19 +146,32 @@ def process_granule(item, tx, ty):
             shape = (int(win.height), int(win.width))
             # Scale/offset come from each file, not from STAC (see docs/stage1-checks.md).
             g_scale, g_off = g.scales[0], g.offsets[0]
-            green_raw = read_window(g, win, shape, Resampling.nearest)
-        with rasterio.open(hrefs["swir16"]) as s:
-            swir_raw = read_window(s, from_bounds(*b, s.transform), shape, Resampling.bilinear)
-            s_scale, s_off = s.scales[0], s.offsets[0]
-        with rasterio.open(hrefs["scl"]) as c:
-            scl = read_window(c, from_bounds(*b, c.transform), shape, Resampling.nearest)
+            # SCL first (20 m, small): when no pixel in the window is clear, B03/B11 cannot change any result and are not read.
+            with rasterio.open(hrefs["scl"]) as c:
+                scl = read_window(c, from_bounds(*b, c.transform), shape, Resampling.nearest)
+            scl_clear = ~np.isin(scl, SCL_NODATA + SCL_CLOUD + SCL_SHADOW)
+            skipped = SCL_FIRST and not scl_clear.any()
+            if skipped:
+                green_raw = np.zeros(shape, g.dtypes[0])
+            else:
+                green_raw = read_window(g, win, shape, Resampling.nearest)
+        if skipped:
+            swir_raw, s_off, s_scale = np.zeros(shape, green_raw.dtype), None, 1.0
+        else:
+            with rasterio.open(hrefs["swir16"]) as s:
+                swir_raw = read_window(s, from_bounds(*b, s.transform), shape, Resampling.bilinear)
+                s_scale, s_off = s.scales[0], s.offsets[0]
 
     green = green_raw.astype("float32") * g_scale + g_off
-    swir = swir_raw.astype("float32") * s_scale + s_off
+    swir = swir_raw.astype("float32") * s_scale + (s_off or 0.0)
     with np.errstate(divide="ignore", invalid="ignore"):
         ndsi = (green - swir) / (green + swir)
-    green_nodata = green_raw == 0
-    nodata = green_nodata | (swir_raw == 0) | np.isin(scl, SCL_NODATA) | ~np.isfinite(ndsi)
+    if skipped:  # no clear pixel to judge: only SCL says what is missing
+        green_nodata = nodata = np.isin(scl, SCL_NODATA)
+        ndsi = np.full(shape, np.nan, np.float32)
+    else:
+        green_nodata = green_raw == 0
+        nodata = green_nodata | (swir_raw == 0) | np.isin(scl, SCL_NODATA) | ~np.isfinite(ndsi)
     cloud = np.isin(scl, SCL_CLOUD) & ~nodata
     shadow = np.isin(scl, SCL_SHADOW) & ~nodata
     clear = ~(nodata | cloud | shadow)
@@ -186,7 +201,9 @@ def process_granule(item, tx, ty):
     cls = np.zeros((n, n), np.uint8)
     seen = total > 0
     is_clear = seen & (n_clear * 2 > total)
-    cls[is_clear & (n_snow > n_green)] = 4
+    snow_cell = is_clear & (n_snow > n_green) & (n_clear * 100 >= SNOW_MIN_CLEAR_PCT * total)
+    is_clear &= ~((n_snow > n_green) & ~snow_cell)  # doubtful snow cells fall through to "not seen"
+    cls[snow_cell] = 4
     cls[is_clear & (n_snow <= n_green)] = 3
     other = seen & ~is_clear
     cls[other] = np.argmax(np.stack([n_nodata, n_cloud, n_shadow]), axis=0)[other].astype(np.uint8)
@@ -217,8 +234,8 @@ def write_obs(path, tx, ty, parts, items, considered=None):
             scene=",".join(i["id"] for i in items), product_uri=",".join(i["properties"]["s2:product_uri"] for i in items),
             datatake_id=p0["s2:datatake_id"], obs_start_utc=times[0], obs_end_utc=times[-1],
             sun_elevation=str(np.mean([i["properties"].get("view:sun_elevation", np.nan) for i in items])),
-            algo_version=ALGO_VERSION, ndsi_threshold=str(NDSI_THRESHOLD), green_min=str(GREEN_MIN),
-            processing_baseline=str(p0.get("s2:processing_baseline")), band_offsets=f"green={parts['offsets'][0]},swir16={parts['offsets'][1]}",
+            algo_version=ALGO_VERSION, ndsi_threshold=str(NDSI_THRESHOLD), green_min=str(GREEN_MIN), snow_min_clear_pct=str(SNOW_MIN_CLEAR_PCT),
+            processing_baseline=str(p0.get("s2:processing_baseline")), band_offsets=f"green={parts['offsets'][0]},swir16={parts['offsets'][1] if parts['offsets'][1] is not None else 'not read'}",
             note="scale/offset read from the COG files; overlapping granules: first by s2:tile_id wins",
             qc_neg_b03_frac=f"{qc['neg_g'] / max(qc['valid_g'], 1):.4f}",
             qc_ndsi_snow_in_scl_frac="na" if qc["snow"] < 1000 else f"{qc['snow_in_scl'] / qc['snow']:.4f}",
