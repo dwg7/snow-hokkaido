@@ -42,3 +42,7 @@ Two readings of "180 days": (A) **forward**: run the daily update for 180 days; 
 1. Forward operation can continue as is; do the incremental state and move the series files before day 60 or so.
 2. Before any long backfill: validate the pixel rule on a few scenes (target the cloud/snow confusion and shadows), fix the rule, add `algo_version` to the obs path so old and new runs can sit side by side, implement item 1 above, then backfill newest first (the latest days are the ones people look at).
 3. Do the backfill for Oct-Mar (about 150 days) rather than 180 days from August if time matters.
+
+## SCL-first reading: measured effect (2026-10-22)
+
+One granule x tile window with no clear pixel (2026-10-03, tile 9/454/190) took 8.4 s without and 5.1 s with the SCL-first skip; the output was identical. Only one such window turned up in two cloudy days, so the share of skippable windows in winter and the overall saving are **not measured**.
