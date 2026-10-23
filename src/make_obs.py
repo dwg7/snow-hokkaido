@@ -214,6 +214,17 @@ def process_granule(item, tx, ty):
             "pixels_per_cell": (int(total[seen].min()), float(np.median(total[seen])), int(total[seen].max()))}
 
 
+def read_with_retry(item, tx, ty, attempts=4):
+    """process_granule, retried: range reads from S3 sometimes come back short (CPLE_AppDefinedError / RasterioIOError)."""
+    for k in range(attempts):
+        try:
+            return process_granule(item, tx, ty)
+        except rasterio.errors.RasterioError:
+            if k == attempts - 1:
+                raise
+            time.sleep(5 * 2 ** k)
+
+
 def write_obs(path, tx, ty, parts, items, considered=None):
     """Write one pass x tile file from merged granule results."""
     cls, ndsi_q, clear_pct = parts["cls"], parts["ndsi_q"], parts["clear_pct"]
@@ -304,7 +315,7 @@ def main():
             return f"  {dt} {tx}/{ty}: exists, skipped"
         merged, used = None, []
         for it in cover:
-            r = process_granule(it, tx, ty)
+            r = read_with_retry(it, tx, ty)
             if r is None:
                 continue
             used.append(it)
@@ -325,9 +336,19 @@ def main():
         vals, cnt = np.unique(merged["cls"], return_counts=True)
         return f"  {dt} {tx}/{ty}: {len(used)} granule(s) {dict(zip(vals.tolist(), cnt.tolist()))} {time.time() - t0:.0f}s"
 
+    def safe_run(job):  # one failed file must not stop the others; it is not written, so a rerun redoes it
+        try:
+            return run_one(job)
+        except Exception as e:
+            return f"FAILED {job[0]} {job[1]}: {type(e).__name__}: {str(e)[:120]}"
+
     with ThreadPoolExecutor(max_workers=a.workers) as ex:  # reads are network-bound; each thread opens its own datasets
-        for msg in ex.map(run_one, plan):
-            print(msg, flush=True)
+        msgs = list(ex.map(safe_run, plan))
+    for msg in msgs:
+        print(msg, flush=True)
+    failed = [m for m in msgs if m.startswith("FAILED")]
+    if failed:
+        raise SystemExit(f"{len(failed)} file(s) failed; rerun the same command to retry them")
 
 
 if __name__ == "__main__":
