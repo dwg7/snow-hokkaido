@@ -32,12 +32,12 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
   // Basemap: bvmap-starlight (GSI optimized vector tiles), served by stars.optgeo.org (CORS allowed).
   const STYLE_URL = (options && options.styleUrl) || 'https://stars.optgeo.org/style/bvmap-starlight.json';
   const TABULAR = [
-    { key: 'snow_rate', name: '積雪率 (tabular map)' },
-    { key: 'cloud_rate', name: '雲の割合 (tabular map)' },
-    { key: 'visible_rate', name: '見えた割合 (tabular map)' },
-    { key: 'scan_rate', name: '走査できた割合 (tabular map)' },
-    { key: 'snow_rate_last', name: '積雪率・最終既知 (tabular map)' },
-    { key: 'freshness', name: '鮮度・7日以内に見えた割合 (tabular map)' }
+    { key: 'snow_rate', name: '積雪率' },
+    { key: 'cloud_rate', name: '雲の割合' },
+    { key: 'visible_rate', name: '見えた割合' },
+    { key: 'scan_rate', name: '撮影できた割合' },
+    { key: 'snow_rate_last', name: '積雪率・最終既知' },
+    { key: 'freshness', name: '情報の新しさ' }
   ];
 
   const fetchJson = (p) => fetch(dataUrl + p, { cache: 'no-store' }).then((r) => {
@@ -59,7 +59,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
   const ATTRIBUTION = 'Contains modified Copernicus Sentinel data 2026 / 「国土数値情報(行政区域データ)」(国土交通省)をもとに作成(国が作成したものではありません) / 背景地図: 国土地理院最適化ベクトルタイルをもとにしたスタイル(bvmap-starlight) / データ: CC BY 4.0';
 
   function rootView(host) {
-    host.appendChild(el('h2', 'sh-h', 'snow-hokkaido'));
+    host.appendChild(el('h2', 'sh-h', '北海道の積雪'));
     host.appendChild(el('p', 'sh-p', '北海道の積雪を、雲で見えなかったことも含めて記録する台帳の計器盤。左のツリーから計器を選んでください。'));
     host.appendChild(el('p', 'sh-p sh-muted', ATTRIBUTION));
     host.appendChild(el('p', 'sh-p', '現在は2026-10-18の1パス(北海道の広い範囲を1回で撮影した1回分)の集計です。写真に写らなかった市町村は「無データ」です。地図の計器は、セルの色の上に、背景地図の線画(海岸・川・道路・行政界)と地名を重ねて表示します。'));
@@ -334,9 +334,9 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
       objects.set(key, Object.assign({ identifier: { namespace: NS, key }, name, type: 'snow.instrument', snow: Object.assign({ kind }, extra) },
         key === 'root' ? { location: 'ROOT' } : {}));
     };
-    add('root', 'snow-hokkaido', 'root');
-    add('maplibre', '地図 (MapLibre)', 'maplibre');
-    add('about', 'アルゴリズムの説明', 'about');
+    add('root', '北海道の積雪', 'root');
+    add('maplibre', '積雪の地図', 'maplibre');
+    add('about', '数字と色の作り方', 'about');
     for (const t of TABULAR) add('tabular:' + t.key, t.name, 'tabular', { series: t.key });
     const children = [{ namespace: NS, key: 'maplibre' }, ...TABULAR.map((t) => ({ namespace: NS, key: 'tabular:' + t.key })), { namespace: NS, key: 'about' }];
 
@@ -353,7 +353,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
     });
     openmct.objectViews.addProvider({
       key: 'snow.view',
-      name: 'snow-hokkaido',
+      name: '北海道の積雪',
       canView: (d) => d.identifier.namespace === NS && d.type === 'snow.instrument',
       view(domainObject) {
         const state = { disposed: false, map: null };
