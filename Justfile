@@ -37,11 +37,12 @@ publish *args:
 obs-range newest oldest *args:
     #!/usr/bin/env bash
     set -euo pipefail
-    d="{{newest}}"
+    d="{{newest}}"; fail=0
     while [[ ! "$d" < "{{oldest}}" ]]; do
-      echo "=== $d"; just obs "$d" {{args}}
+      echo "=== $d"; just obs "$d" {{args}} || fail=1
       d=$(date -j -v-1d -f %Y-%m-%d "$d" +%Y-%m-%d)
     done
+    exit $fail
 
 # After obs files exist: events for every pass that has none, the state history up to `upto`, the display tiles, and the Pages data.
 rebuild upto:

@@ -29,6 +29,9 @@
         openmct.install(openmct.plugins.UTCTimeSystem());
         openmct.install(openmct.plugins.Espresso());
         openmct.install(SnowHokkaidoPlugin({ dataUrl: './data/', viewUrl: 'https://data.source.coop/smartmaps/foil4gr1/snow-hokkaido/view/' }));
+        // Open MCT 4.3.1 reads the time system at start-up; without a selected one it logs a harmless TypeError (reading 'key')
+        openmct.time.setTimeSystem('utc');
+        openmct.time.setMode('fixed', { start: Date.now() - 24 * 60 * 60 * 1000, end: Date.now() });
         openmct.start('#app');
       })();
     </script>

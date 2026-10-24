@@ -11,3 +11,4 @@ __pycache__/
 /docs/data/view/
 # backups made before a rule migration (src/migrate_obs_rule.py)
 /ledger/obs-*/
+/ledger-winter/

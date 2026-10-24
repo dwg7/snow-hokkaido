@@ -78,10 +78,10 @@ def main():
         di = (d - start).days + 1
         if d.isoformat() in obs_days:
             with rasterio.open(f"{a.ledger}/grid/cellmap.tif") as cm:
-                cls, ndsi_q, _ = load_day(a.ledger, d.isoformat(), cm)
+                cls, _ = load_day(a.ledger, d.isoformat(), cm)
             folder.update(di, cls)
             # the day's own counts (one observation per cell per day), same definitions as events
-            day = build_events(cls, ndsi_q, muni_index, flags, master, {})
+            day = build_events(cls, muni_index, flags, master, {})
             day.insert(1, "date", d.isoformat())
             daily.append(day)
         led = folder.ledger()

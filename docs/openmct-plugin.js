@@ -149,9 +149,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
       const cb = document.createElement('input');
       cb.type = 'checkbox'; cb.checked = true;
       cb.addEventListener('change', () => { if (map.getLayer('obs')) map.setLayoutProperty('obs', 'visibility', cb.checked ? 'visible' : 'none'); });
-      const slider = document.createElement('input');
-      slider.type = 'range'; slider.className = 'sh-slider';
-      slider.addEventListener('input', () => { mode.index = +slider.value; showLayer(); });
+      const picker = datePicker((i) => { mode.index = i; showLayer(); });
 
       function renderLegend() {
         legendBody.textContent = '';
@@ -177,8 +175,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
           }
           legendBody.appendChild(el('div', 'sh-legend-n', '最後に晴れて見えた状態。色が薄いほど古い。透明 = まだ一度も見えていない'));
         }
-        slider.min = 0; slider.max = dates().length - 1; slider.value = mode.index;
-        slider.disabled = dates().length < 2;
+        picker.set(dates(), mode.index);
       }
 
       const modes = el('div', 'sh-legend-n');
@@ -191,7 +188,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
         modes.appendChild(lab);
       }
       controls.appendChild(modes);
-      const sliderRow = el('div'); sliderRow.appendChild(slider);
+      const sliderRow = el('div'); sliderRow.appendChild(picker.el);
       controls.appendChild(sliderRow);
       const tg = el('div'); const tgl = el('label');
       tgl.appendChild(cb); tgl.appendChild(document.createTextNode(' セルを表示'));
@@ -222,6 +219,75 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
   const TS_KEYS = ['snow_rate', 'cloud_rate', 'visible_rate', 'scan_rate', 'snow_rate_last', 'freshness'];  // these have a per-day series (series/<key>_ts.json)
   const LAST_KNOWN = ['snow_rate_last', 'freshness'];  // calendar-day series (every day, ages advance); the others are observed days only
 
+  // Date picker in the manner of the Copernicus Browser: previous / next *available* date, a calendar in which only
+  // dates with data can be chosen, and a jump to the latest. `dates` are ascending 'YYYY-MM-DD' strings.
+  const WEEK = ['日', '月', '火', '水', '木', '金', '土'];
+  const pad = (n) => String(n).padStart(2, '0');
+  function datePicker(onPick) {
+    const root = el('div', 'sh-dp'); root.tabIndex = 0;
+    const mkBtn = (text, title, cls) => { const b = el('button', 'sh-dp-b ' + (cls || ''), text); b.type = 'button'; b.title = title; return b; };
+    const prev = mkBtn('◀', '前の観測日'), next = mkBtn('▶', '次の観測日');
+    const label = mkBtn('', 'カレンダーを開く', 'sh-dp-date'), latest = mkBtn('最新', '最新の日へ');
+    const pop = el('div', 'sh-dp-pop'); pop.hidden = true;
+    let dates = [], idx = 0, ym = [2000, 1];
+    const wd = (iso) => WEEK[new Date(iso + 'T00:00:00Z').getUTCDay()];
+    function pick(i) { if (i < 0 || i >= dates.length || i === idx) return; idx = i; onPick(i); update(); }
+    function renderPop() {
+      pop.textContent = '';
+      const first = dates[0].slice(0, 7), last = dates[dates.length - 1].slice(0, 7);
+      const cur = ym[0] + '-' + pad(ym[1]);
+      const head = el('div', 'sh-dp-head');
+      const mp = mkBtn('◀', '前の月'), mn = mkBtn('▶', '次の月');
+      mp.disabled = cur <= first; mn.disabled = cur >= last;
+      const shift = (d) => { const t = new Date(Date.UTC(ym[0], ym[1] - 1 + d, 1)); ym = [t.getUTCFullYear(), t.getUTCMonth() + 1]; renderPop(); };
+      mp.addEventListener('click', () => shift(-1)); mn.addEventListener('click', () => shift(1));
+      head.appendChild(mp); head.appendChild(el('span', 'sh-dp-month', ym[0] + '年' + ym[1] + '月')); head.appendChild(mn);
+      pop.appendChild(head);
+      const grid = el('div', 'sh-dp-grid');
+      for (const w of WEEK) grid.appendChild(el('span', 'sh-dp-wd', w));
+      const dow = new Date(Date.UTC(ym[0], ym[1] - 1, 1)).getUTCDay();
+      for (let i = 0; i < dow; i++) grid.appendChild(el('span'));
+      const days = new Date(Date.UTC(ym[0], ym[1], 0)).getUTCDate();
+      const at = new Map(dates.map((d, i) => [d, i]));
+      for (let d = 1; d <= days; d++) {
+        const iso = ym[0] + '-' + pad(ym[1]) + '-' + pad(d);
+        const c = mkBtn(String(d), at.has(iso) ? iso + ' を表示' : 'この日のデータはありません', 'sh-dp-day');
+        if (!at.has(iso)) c.disabled = true;
+        else {
+          if (at.get(iso) === idx) c.classList.add('sh-dp-sel');
+          c.addEventListener('click', () => { pick(at.get(iso)); pop.hidden = true; });
+        }
+        grid.appendChild(c);
+      }
+      pop.appendChild(grid);
+      pop.appendChild(el('div', 'sh-dp-n', '色のついた日だけ選べます (データのある日)'));
+    }
+    function update() {
+      label.textContent = dates.length ? dates[idx] + ' (' + wd(dates[idx]) + ')' : '日付なし';
+      prev.disabled = idx <= 0; next.disabled = idx >= dates.length - 1; latest.disabled = idx >= dates.length - 1;
+      if (!pop.hidden) { ym = dates[idx].slice(0, 7).split('-').map(Number); renderPop(); }
+    }
+    label.addEventListener('click', () => {
+      pop.hidden = !pop.hidden;
+      if (!pop.hidden) { ym = dates[idx].slice(0, 7).split('-').map(Number); renderPop(); }
+    });
+    prev.addEventListener('click', () => pick(idx - 1)); next.addEventListener('click', () => pick(idx + 1));
+    latest.addEventListener('click', () => pick(dates.length - 1));
+    root.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') { pick(idx - 1); e.preventDefault(); }
+      else if (e.key === 'ArrowRight') { pick(idx + 1); e.preventDefault(); }
+      else if (e.key === 'Escape') pop.hidden = true;
+    });
+    document.addEventListener('mousedown', (e) => { if (!pop.hidden && root.isConnected && !root.contains(e.target)) pop.hidden = true; });
+    const bar = el('div', 'sh-dp-bar');
+    for (const n of [prev, label, next, latest]) bar.appendChild(n);
+    root.appendChild(bar); root.appendChild(pop);
+    return {
+      el: root, get index() { return idx; },
+      set(newDates, newIdx) { dates = newDates; idx = Math.min(Math.max(newIdx, 0), Math.max(dates.length - 1, 0)); update(); }
+    };
+  }
+
   function tabularView(host, state, key, name) {
     const hasTs = TS_KEYS.includes(key);
     Promise.all([loadLayout(), fetchJson('series/' + key + '.json'), hasTs ? fetchJson('series/' + key + '_ts.json') : Promise.resolve(null)]).then(([data, latest, ts]) => {
@@ -241,15 +307,13 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
         let idx = ts.dates.length - 1;
         state.map.setSeries(seriesAt(idx));
         const row = el('div', 'sh-ts-row');
-        const lab = el('span', 'sh-ts-lab', ts.dates[idx]);
-        const slider = document.createElement('input');
-        slider.type = 'range'; slider.className = 'sh-slider'; slider.min = 0; slider.max = ts.dates.length - 1; slider.value = idx;
-        slider.addEventListener('input', () => { idx = +slider.value; lab.textContent = ts.dates[idx]; state.map.setSeries(seriesAt(idx)); });
-        row.appendChild(lab); row.appendChild(slider);
+        const picker = datePicker((i) => { idx = i; state.map.setSeries(seriesAt(idx)); });
+        picker.set(ts.dates, idx);
+        row.appendChild(picker.el);
         host.appendChild(row);
         noteText = LAST_KNOWN.includes(key)
-          ? ATTRIBUTION + '。スライダーで日付を動かせます。その日までに最後に晴れて見えた状態で数えた値で、観測のない日も、古さだけが進みます。一度も見えていない場所は数に入りません。'
-          : ATTRIBUTION + '。スライダーで日付を動かせます (その日に撮れた観測だけの値。同じ日に複数回撮れた場所は、最後に晴れて見えた観測を使います)。写らなかった市町村は無データです。「見えた割合」と「走査できた割合」は、市町村全体に対する割合なので、一部しか写らなかった日は小さくなります。積雪率と雲の割合は、写った範囲だけの割合です。';
+          ? ATTRIBUTION + '。日付は、◀ ▶ かカレンダーで選べます。その日までに最後に晴れて見えた状態で数えた値で、観測のない日も、古さだけが進みます。一度も見えていない場所は数に入りません。'
+          : ATTRIBUTION + '。日付は、◀ ▶ かカレンダーで選べます (その日に撮れた観測だけの値。同じ日に複数回撮れた場所は、最後に晴れて見えた観測を使います)。写らなかった市町村は無データです。「見えた割合」と「走査できた割合」は、市町村全体に対する割合なので、一部しか写らなかった日は小さくなります。積雪率と雲の割合は、写った範囲だけの割合です。';
       } else {
         state.map.setSeries(latest);
         noteText = ATTRIBUTION + '。最新の日の値です (日付は上の見出し)。最終既知の計算は、雲で見えなかった場所に、最後に見えた状態を使います。';

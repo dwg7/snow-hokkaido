@@ -12,14 +12,13 @@ def check_invariants(df):
     assert (df.n_scanned <= df.n_land).all()
     assert (df.n_scanned == df.n_cloud + df.n_shadow + df.n_clear).all()
     assert (df.n_clear == df.n_clear_canopy + df.n_clear_valid).all()
-    assert (df.n_clear_valid == df.n_snow + df.n_marginal + df.n_nosnow).all()
+    assert (df.n_clear_valid == df.n_snow + df.n_nosnow).all()
 
 
 def synthetic():
     n = 8
     rng = np.random.default_rng(0)
     cls = rng.integers(0, 5, (n, n)).astype(np.uint8)
-    ndsi_q = rng.integers(0, 200, (n, n)).astype(np.uint8)
     muni = np.zeros((n, n), np.uint8)
     muni[:, :4] = 1
     muni[:, 4:7] = 2  # last column stays outside every municipality
@@ -28,24 +27,14 @@ def synthetic():
     flags[1, 1] |= 2  # lake
     flags[2, 5] |= 4  # sea
     master = pd.DataFrame({"muni_index": [1, 2], "muni_code": ["00001", "00002"]})
-    return cls, ndsi_q, muni, flags, master
+    return cls, muni, flags, master
 
 
 def test_synthetic_invariants():
-    cls, ndsi_q, muni, flags, master = synthetic()
-    df = build_events(cls, ndsi_q, muni, flags, master, {})
+    cls, muni, flags, master = synthetic()
+    df = build_events(cls, muni, flags, master, {})
     check_invariants(df)
     assert df.n_land.sum() == int(((muni > 0) & ((flags & 6) == 0)).sum())
-
-
-def test_synthetic_snow_marginal_split():
-    cls = np.full((2, 2), 4, np.uint8)
-    ndsi_q = np.array([[142, 180], [150, 100]], np.uint8)  # NDSI 0.42, 0.80, 0.50, 0.00
-    muni = np.ones((2, 2), np.uint8)
-    flags = np.zeros((2, 2), np.uint8)
-    master = pd.DataFrame({"muni_index": [1], "muni_code": ["00001"]})
-    df = build_events(cls, ndsi_q, muni, flags, master, {}).iloc[0]
-    assert (df.n_marginal, df.n_snow, df.n_nosnow) == (1, 3, 0)
 
 
 @pytest.mark.parametrize("path", glob.glob("ledger/events/season=*/part-*.parquet"))
