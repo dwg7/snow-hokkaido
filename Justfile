@@ -62,3 +62,23 @@ rebuild upto:
 # One daily run: new obs (today and the previous days), events, state, display files, publish plan. Add --upload after `source-coop login`.
 daily *args:
     python3 src/daily.py {{args}}
+
+# Intermediate rebuild while a backfill is still running: only days from `from` on are complete (a backfill goes newest first),
+# so events and observation tiles are made for those; the state is replayed up to `upto`; series are exported. No upload.
+checkpoint from upto:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for p in ledger/obs/season=*/*/*; do
+      [ -d "$p" ] || continue
+      day=$(basename "$(dirname "$p")"); dt=$(basename "$p")
+      [[ "$day" < "{{from}}" ]] && continue
+      f=$(ls ledger/events/season=*/part-${day}_${dt}.parquet 2>/dev/null | head -1 || true)
+      if [ -z "$f" ]; then just events "$p" > /dev/null; fi
+    done
+    just state {{upto}}
+    for d in $(ls ledger/obs/season=*/ | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' | sort -u); do
+      [[ "$d" < "{{from}}" ]] && continue
+      [[ "$d" > "{{upto}}" ]] && continue
+      just view-tiles "$d" > /dev/null
+    done
+    just docs-data
