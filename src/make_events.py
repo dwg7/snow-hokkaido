@@ -9,17 +9,13 @@ import pandas as pd
 import rasterio
 from rasterio.windows import from_bounds
 
-NDSI_THRESHOLD = 0.42
-MARGIN_DELTA = 0.05  # provisional: |NDSI - threshold| <= delta is "marginal"
 STATIC_LAKE, STATIC_SEA, STATIC_CANOPY = 2, 4, 1  # static_flags bits
-QC_REFLECTANCE = 1  # qc_flags bit0: B03 negative-reflectance share above the (provisional) threshold
-NEG_B03_MAX = 0.25  # provisional; set after checking more scenes
 
 COUNT_COLS = ["n_land", "n_scanned", "n_cloud", "n_shadow", "n_clear", "n_clear_canopy",
-              "n_clear_valid", "n_snow", "n_marginal", "n_nosnow"]
+              "n_clear_valid", "n_snow", "n_nosnow"]
 
 
-def build_events(cls, ndsi_q, muni_index, flags, master, meta):
+def build_events(cls, muni_index, flags, master, meta):
     """Aggregate per-cell obs arrays by municipality. All arrays share one shape; returns a DataFrame.
 
     Cells not covered by the pass must be class 0 (not scanned); n_land counts every land cell of the
@@ -29,10 +25,8 @@ def build_events(cls, ndsi_q, muni_index, flags, master, meta):
     k = int(master.muni_index.max()) + 1
     land = (muni_index > 0) & ((flags & (STATIC_LAKE | STATIC_SEA)) == 0)
     canopy = (flags & STATIC_CANOPY) != 0
-    ndsi = ndsi_q.astype("float64") / 100 - 1
     clear = land & np.isin(cls, (3, 4))
     valid = clear & ~canopy
-    marginal = valid & (np.abs(ndsi - NDSI_THRESHOLD) <= MARGIN_DELTA)
     masks = {
         "n_land": land,
         "n_scanned": land & np.isin(cls, (1, 2, 3, 4)),
@@ -41,19 +35,13 @@ def build_events(cls, ndsi_q, muni_index, flags, master, meta):
         "n_clear": clear,
         "n_clear_canopy": clear & canopy,
         "n_clear_valid": valid,
-        "n_snow": valid & (cls == 4) & ~marginal,
-        "n_marginal": marginal,
-        "n_nosnow": valid & (cls == 3) & ~marginal,
+        "n_snow": valid & (cls == 4),
+        "n_nosnow": valid & (cls == 3),
     }
     flat = muni_index.ravel()
     counts = {name: np.bincount(flat[m.ravel()], minlength=k)[1:k] for name, m in masks.items()}
     df = pd.DataFrame(counts)
     df.insert(0, "muni_code", master.sort_values("muni_index").muni_code.to_numpy())
-    # NDSI percentiles over valid cells, per municipality
-    vm = valid.ravel()
-    q = pd.DataFrame({"m": flat[vm], "v": ndsi.ravel()[vm]}).groupby("m")["v"]
-    for p in (10, 50, 90):
-        df[f"ndsi_p{p}"] = q.quantile(p / 100).reindex(range(1, k)).to_numpy()
     df = df[df.n_scanned > 0].reset_index(drop=True)
     for key, val in meta.items():
         df[key] = [val] * len(df) if isinstance(val, list) else val
@@ -76,7 +64,6 @@ def main():
     for p in a.obs:
         paths += sorted(Path(p).rglob("*.tif")) if Path(p).is_dir() else [Path(p)]
     cls = np.zeros(cm_shape, np.uint8)
-    ndsi_q = np.full(cm_shape, 255, np.uint8)
     tags, scenes, starts, ends = None, [], [], []
     for path in paths:  # obs files of one pass (one per z9 tile); everything else stays class 0
         with rasterio.open(path) as d:
@@ -85,7 +72,6 @@ def main():
             w = from_bounds(*d.bounds, cm_tf)
             r0, c0 = round(w.row_off), round(w.col_off)
             cls[r0:r0 + d.height, c0:c0 + d.width] = d.read(1)
-            ndsi_q[r0:r0 + d.height, c0:c0 + d.width] = d.read(2)
         if tags is None:
             tags = t
         elif t["datatake_id"] != tags["datatake_id"]:
@@ -99,12 +85,11 @@ def main():
         "sun_elev_deg": np.float32(tags["sun_elevation"]),
         "sources": sorted(set(scenes)),
         "cell_zoom": np.uint8(int(tags["zoom"])),
-        "qc_flags": np.uint16(QC_REFLECTANCE if float(tags.get("qc_neg_b03_frac", 0)) > NEG_B03_MAX else 0),
         "algo_version": tags["algo_version"],
         "superseded_by": None,
         "processed_at": pd.Timestamp(datetime.now(timezone.utc)),
     }
-    df = build_events(cls, ndsi_q, muni_index, flags, master, meta)
+    df = build_events(cls, muni_index, flags, master, meta)
     df.insert(0, "event_id", df["muni_code"] + "-" + digest)
     df = df.sort_values(["muni_code", "obs_start_utc"]).reset_index(drop=True)
     for c in COUNT_COLS:

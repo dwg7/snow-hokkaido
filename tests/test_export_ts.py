@@ -9,7 +9,7 @@ def rows(date, items):
     for code, (land, scanned, cloud, clear_valid, snow) in items.items():
         out.append({"muni_code": code, "date": date, "n_land": land, "n_scanned": scanned, "n_cloud": cloud,
                     "n_shadow": 0, "n_clear": clear_valid, "n_clear_canopy": 0, "n_clear_valid": clear_valid,
-                    "n_snow": snow, "n_marginal": 0, "n_nosnow": clear_valid - snow})
+                    "n_snow": snow, "n_nosnow": clear_valid - snow})
     return out
 
 

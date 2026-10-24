@@ -1,4 +1,4 @@
-"""Build obs files (class, ndsi_q, clear_pct per z18 cell) for one JST day, cutting scenes into z9 tiles.
+"""Build obs files (class, clear_pct per z18 cell) for one JST day, cutting scenes into z9 tiles.
 
 Layout: <out>/obs/season=YYYY/<JST date>/<datatake_id>/<x>-<y>.tif, one file per pass and z9 tile
 (docs/timeseries-spec.md, section 2). Granules of one pass that cover a tile are merged: a cell takes the
@@ -32,11 +32,8 @@ CELL_M = 2 * ORIGIN / 2**Z
 N9 = 2 ** (Z - 9)  # cells per z9 tile edge
 STAC = "https://earth-search.aws.element84.com/v1"
 COLLECTION = "sentinel-2-c1-l2a"  # canonical (docs/timeseries-spec.md): COG metadata carries scale/offset
-ALGO_VERSION = "algo-v1-dev3"
-NDSI_THRESHOLD = 0.42  # Sen2Cor value
-GREEN_MIN = 0.10  # snow also needs B03 reflectance >= this: water and dark shadow give high NDSI with low B03
-SCL_WATER = 6
-SCL_FIRST = True  # skip the B03/B11 reads for windows without any clear pixel
+ALGO_VERSION = "algo-v1-dev4"
+SCL_SNOW = 11  # snow / ice in the L2A scene classification
 SNOW_MIN_CLEAR_PCT = 80  # a cell is snow only if at least this share of its pixels was clear: snow next to cloud is doubtful (docs/validation-pixel-rule.md)
 JST = timezone(timedelta(hours=9))
 STEP = 32  # pixels between nodes of the pixel -> cell coordinate interpolation grid
@@ -125,8 +122,12 @@ def cell_coords(wt, shape, to_3857, x0, y0):
 
 
 def process_granule(item, tx, ty):
-    """Aggregate one granule into the z18 cells of z9 tile (tx, ty). Returns a dict or None if nothing scanned."""
-    hrefs = {k: item["assets"][k]["href"] for k in ("green", "swir16", "scl")}
+    """Aggregate one granule into the z18 cells of z9 tile (tx, ty). Returns a dict or None if nothing scanned.
+
+    Only SCL is read (algo-v1-dev4): snow is SCL class 11, as classified by the L2A processing. B03 and B11 are not
+    read.
+    """
+    hrefs = {k: item["assets"][k]["href"] for k in ("green", "scl")}  # green: header only, for the 10 m window
     x0, y0, (west, south, east, north), _ = tile_geom(tx, ty)
     n = N9
     with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", GDAL_HTTP_MAX_RETRY="3"):
@@ -144,42 +145,16 @@ def process_granule(item, tx, ty):
             wt = g.window_transform(win)
             b = rasterio.windows.bounds(win, g.transform)
             shape = (int(win.height), int(win.width))
-            # Scale/offset come from each file, not from STAC (see docs/stage1-checks.md).
-            g_scale, g_off = g.scales[0], g.offsets[0]
-            # SCL first (20 m, small): when no pixel in the window is clear, B03/B11 cannot change any result and are not read.
-            with rasterio.open(hrefs["scl"]) as c:
-                scl = read_window(c, from_bounds(*b, c.transform), shape, Resampling.nearest)
-            scl_clear = ~np.isin(scl, SCL_NODATA + SCL_CLOUD + SCL_SHADOW)
-            skipped = SCL_FIRST and not scl_clear.any()
-            if skipped:
-                green_raw = np.zeros(shape, g.dtypes[0])
-            else:
-                green_raw = read_window(g, win, shape, Resampling.nearest)
-        if skipped:
-            swir_raw, s_off, s_scale = np.zeros(shape, green_raw.dtype), None, 1.0
-        else:
-            with rasterio.open(hrefs["swir16"]) as s:
-                swir_raw = read_window(s, from_bounds(*b, s.transform), shape, Resampling.bilinear)
-                s_scale, s_off = s.scales[0], s.offsets[0]
+        with rasterio.open(hrefs["scl"]) as c:
+            scl = read_window(c, from_bounds(*b, c.transform), shape, Resampling.nearest)
 
-    green = green_raw.astype("float32") * g_scale + g_off
-    swir = swir_raw.astype("float32") * s_scale + (s_off or 0.0)
-    with np.errstate(divide="ignore", invalid="ignore"):
-        ndsi = (green - swir) / (green + swir)
-    if skipped:  # no clear pixel to judge: only SCL says what is missing
-        green_nodata = nodata = np.isin(scl, SCL_NODATA)
-        ndsi = np.full(shape, np.nan, np.float32)
-    else:
-        green_nodata = green_raw == 0
-        nodata = green_nodata | (swir_raw == 0) | np.isin(scl, SCL_NODATA) | ~np.isfinite(ndsi)
-    cloud = np.isin(scl, SCL_CLOUD) & ~nodata
-    shadow = np.isin(scl, SCL_SHADOW) & ~nodata
+    nodata = np.isin(scl, SCL_NODATA)
+    cloud = np.isin(scl, SCL_CLOUD)
+    shadow = np.isin(scl, SCL_SHADOW)
     clear = ~(nodata | cloud | shadow)
-    snow = clear & (ndsi >= NDSI_THRESHOLD) & (green >= GREEN_MIN) & (scl != SCL_WATER)
+    snow = clear & (scl == SCL_SNOW)
     green_c = clear & ~snow
-    scl_snow = scl == 11
-    qc = {"valid_g": int((~green_nodata).sum()), "neg_g": int(((green < 0) & ~green_nodata).sum()),
-          "snow": int(snow.sum()), "snow_in_scl": int((snow & scl_snow).sum())}
+    qc = {"snow": int(snow.sum()), "clear": int(clear.sum())}
 
     gx, gy = cell_coords(wt, shape, to_3857, x0, y0)
     ix, iy = np.floor(gx).astype(np.int32), np.floor(gy).astype(np.int32)
@@ -196,7 +171,6 @@ def process_granule(item, tx, ty):
     n_cloud, n_shadow, n_nodata = count(cloud), count(shadow), count(nodata)
     n_snow, n_green = count(snow), count(green_c)
     n_clear = n_snow + n_green
-    ndsi_sum = count(clear, np.where(clear, ndsi, 0).astype("float64"))
 
     cls = np.zeros((n, n), np.uint8)
     seen = total > 0
@@ -209,8 +183,7 @@ def process_granule(item, tx, ty):
     cls[other] = np.argmax(np.stack([n_nodata, n_cloud, n_shadow]), axis=0)[other].astype(np.uint8)
     with np.errstate(divide="ignore", invalid="ignore"):
         clear_pct = np.where(seen, np.rint(100 * n_clear / total), 0).astype(np.uint8)
-        ndsi_q = np.where(n_clear > 0, np.rint((np.nan_to_num(ndsi_sum / n_clear) + 1) * 100), 255).clip(0, 255).astype(np.uint8)
-    return {"cls": cls, "ndsi_q": ndsi_q, "clear_pct": clear_pct, "qc": qc, "offsets": (g_off, s_off),
+    return {"cls": cls, "clear_pct": clear_pct, "qc": qc,
             "pixels_per_cell": (int(total[seen].min()), float(np.median(total[seen])), int(total[seen].max()))}
 
 
@@ -227,16 +200,16 @@ def read_with_retry(item, tx, ty, attempts=4):
 
 def write_obs(path, tx, ty, parts, items, considered=None):
     """Write one pass x tile file from merged granule results."""
-    cls, ndsi_q, clear_pct = parts["cls"], parts["ndsi_q"], parts["clear_pct"]
+    cls, clear_pct = parts["cls"], parts["clear_pct"]
     x0, y0, (west, south, east, north), _ = tile_geom(tx, ty)
     qc = parts["qc"]
     p0 = items[0]["properties"]
     times = sorted(i["properties"]["datetime"] for i in items)
     path.parent.mkdir(parents=True, exist_ok=True)
-    prof = dict(driver="COG", width=N9, height=N9, count=3, dtype="uint8", crs="EPSG:3857",
+    prof = dict(driver="COG", width=N9, height=N9, count=2, dtype="uint8", crs="EPSG:3857",
                 transform=from_origin(west, north, CELL_M, CELL_M), compress="deflate")
     with rasterio.open(path, "w", **prof) as dst:
-        for i, (arr, name) in enumerate([(cls, "class"), (ndsi_q, "ndsi_q"), (clear_pct, "clear_pct")], 1):
+        for i, (arr, name) in enumerate([(cls, "class"), (clear_pct, "clear_pct")], 1):
             dst.write(arr, i)
             dst.set_band_description(i, name)
         dst.update_tags(
@@ -245,11 +218,10 @@ def write_obs(path, tx, ty, parts, items, considered=None):
             scene=",".join(i["id"] for i in items), product_uri=",".join(i["properties"]["s2:product_uri"] for i in items),
             datatake_id=p0["s2:datatake_id"], obs_start_utc=times[0], obs_end_utc=times[-1],
             sun_elevation=str(np.mean([i["properties"].get("view:sun_elevation", np.nan) for i in items])),
-            algo_version=ALGO_VERSION, ndsi_threshold=str(NDSI_THRESHOLD), green_min=str(GREEN_MIN), snow_min_clear_pct=str(SNOW_MIN_CLEAR_PCT),
-            processing_baseline=str(p0.get("s2:processing_baseline")), band_offsets=f"green={parts['offsets'][0]},swir16={parts['offsets'][1] if parts['offsets'][1] is not None else 'not read'}",
-            note="scale/offset read from the COG files; overlapping granules: first by s2:tile_id wins",
-            qc_neg_b03_frac=f"{qc['neg_g'] / max(qc['valid_g'], 1):.4f}",
-            qc_ndsi_snow_in_scl_frac="na" if qc["snow"] < 1000 else f"{qc['snow_in_scl'] / qc['snow']:.4f}",
+            algo_version=ALGO_VERSION, snow_source="SCL class 11 (Sen2Cor scene classification)", snow_min_clear_pct=str(SNOW_MIN_CLEAR_PCT),
+            processing_baseline=str(p0.get("s2:processing_baseline")),
+            note="only SCL is read; overlapping granules: first by s2:tile_id wins",
+            qc_clear_pixels=str(qc["clear"]), qc_snow_pixels=str(qc["snow"]),
         )
 
 
@@ -300,7 +272,7 @@ def main():
         try:
             with rasterio.open(out) as d:
                 tags = d.tags()
-                if d.count != 3 or "obs_start_utc" not in tags:
+                if d.count != 2 or "obs_start_utc" not in tags:
                     return False
                 seen = tags.get("granules_considered")  # files written before this tag existed count as complete
                 return seen is None or set(seen.split(",")) == {c["properties"]["s2:product_uri"] for c in cover}
@@ -323,7 +295,7 @@ def main():
                 merged = r
                 continue
             fill = (merged["cls"] == 0) & (r["cls"] != 0)  # first scanned wins
-            for k in ("cls", "ndsi_q", "clear_pct"):
+            for k in ("cls", "clear_pct"):
                 merged[k][fill] = r[k][fill]
             for k in merged["qc"]:
                 merged["qc"][k] += r["qc"][k]

@@ -42,7 +42,7 @@ def add_sapporo(df, count_cols, weight_col=None, mean_col=None):
     return pd.concat([df, pd.DataFrame([row])], ignore_index=True)
 
 
-TS_COUNTS = ["n_land", "n_scanned", "n_cloud", "n_shadow", "n_clear", "n_clear_canopy", "n_clear_valid", "n_snow", "n_marginal", "n_nosnow"]
+TS_COUNTS = ["n_land", "n_scanned", "n_cloud", "n_shadow", "n_clear", "n_clear_canopy", "n_clear_valid", "n_snow", "n_nosnow"]
 TS_METRICS = {  # key -> (label, numerator column, denominator column); same definitions as the single-date series
     "snow_rate": ("積雪率 (確認できたセル中)", "n_snow", "n_clear_valid"),
     "cloud_rate": ("雲の割合 (走査できたセル中)", "n_cloud", "n_scanned"),
@@ -104,7 +104,7 @@ def main():
 
     ev_path = sorted(glob.glob(f"{a.ledger}/events/season=*/part-*.parquet"))[-1]
     ev = pd.read_parquet(ev_path)
-    ev = add_sapporo(ev, ["n_land", "n_scanned", "n_cloud", "n_shadow", "n_clear", "n_clear_canopy", "n_clear_valid", "n_snow", "n_marginal", "n_nosnow"])
+    ev = add_sapporo(ev, ["n_land", "n_scanned", "n_cloud", "n_shadow", "n_clear", "n_clear_canopy", "n_clear_valid", "n_snow", "n_nosnow"])
     as_of_utc = ev["obs_start_utc"].iloc[0]
     as_of = as_of_utc.tz_convert("Asia/Tokyo").strftime("%Y-%m-%d %H:%M JST")
     n_gran = len(ev["sources"].iloc[0])
@@ -121,8 +121,7 @@ def main():
         for r in ev.itertuples():
             if key == "snow_rate":
                 v = pct(r.n_snow, r.n_clear_valid)
-                hi = pct(r.n_snow + r.n_marginal, r.n_clear_valid)
-                note = f"{r.n_snow:,} / {r.n_clear_valid:,} セル (閾値付近を含めると {hi}%)"
+                note = f"{r.n_snow:,} / {r.n_clear_valid:,} セル"
             elif key == "cloud_rate":
                 v = pct(r.n_cloud, r.n_scanned)
                 note = f"{r.n_cloud:,} / {r.n_scanned:,} セル"

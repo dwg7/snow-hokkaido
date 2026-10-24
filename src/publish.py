@@ -8,7 +8,7 @@ Layout (docs/storage.md; decisions of the owner):
   view/obs-<date>.pmtiles, view/state-<date>.pmtiles, view/dates.json
 
 Not published: municipality boundary geometry and anything rasterized from it (grid/cellmap.tif, muni/master.parquet);
-users fetch N03 themselves (`just fetch-n03`, `just cellmap`). ndsi_q stays local.
+users fetch N03 themselves (`just fetch-n03`, `just cellmap`).
 
 Default is a dry run that builds the staging directory and prints what would be uploaded. --upload runs
 `aws s3 sync` against --dest with the credentials already configured in your environment; this script never reads keys.
@@ -52,7 +52,7 @@ def build_obs_lite(ledger, staging, days=None):
                 win = from_bounds(*d.bounds, tf)
                 r, c = round(win.row_off), round(win.col_off)
                 cls[r:r + d.height, c:c + d.width] = d.read(1)
-                pct[r:r + d.height, c:c + d.width] = d.read(3)
+                pct[r:r + d.height, c:c + d.width] = d.read(2)
                 t = d.tags()
                 tags = tags or t
                 scenes += t["scene"].split(","); starts.append(t["obs_start_utc"]); ends.append(t["obs_end_utc"])
@@ -66,9 +66,9 @@ def build_obs_lite(ledger, staging, days=None):
             dst.update_tags(
                 sensor=tags["sensor"], stac_collection=tags["stac_collection"], datatake_id=datatake,
                 scene=",".join(sorted(set(scenes))), obs_start_utc=min(starts), obs_end_utc=max(ends),
-                algo_version=tags["algo_version"], ndsi_threshold=tags["ndsi_threshold"], green_min=tags.get("green_min", ""),
+                algo_version=tags["algo_version"], snow_source=tags.get("snow_source", ""),
                 classes="0 not scanned, 1 cloud, 2 shadow, 3 green (clear, no snow), 4 snow",
-                note="obs-lite: ndsi_q is not included; z9 tile files are merged onto the cellmap grid (EPSG:3857, z18 cells)",
+                note="obs-lite: z9 tile files are merged onto the cellmap grid (EPSG:3857, z18 cells)",
                 attribution="Contains modified Copernicus Sentinel data (Sentinel-2 L2A via Earth Search)",
             )
         out.append(dst_path)

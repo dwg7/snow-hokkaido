@@ -41,10 +41,9 @@ CANVAS_Z4 = 64  # z10 tiles per z4 tile edge
 def load_day(ledger, day, cm):
     """Merge all passes of a JST day on the cellmap grid: a later clear observation wins; otherwise any scan shows.
 
-    Returns (class, ndsi_q, pass names); ndsi_q comes from the pass that won the cell."""
+    Returns (class, pass names)."""
     h, w = cm.shape
     cls = np.zeros((h, w), np.uint8)
-    ndsi_q = np.full((h, w), 255, np.uint8)  # follows the winning pass of each cell
     passes = {}
     for f in glob.glob(f"{ledger}/obs/season=*/{day}/*/*.tif"):
         passes.setdefault(Path(f).parent.name, []).append(f)
@@ -55,18 +54,15 @@ def load_day(ledger, day, cm):
     for _, name in sorted(order):
         for f in passes[name]:
             with rasterio.open(f) as d:
-                a, q = d.read(1), d.read(2)
+                a = d.read(1)
                 win = from_bounds(*d.bounds, cm.transform)
                 r, c = round(win.row_off), round(win.col_off)
             cur = cls[r:r + a.shape[0], c:c + a.shape[1]]
-            cq = ndsi_q[r:r + a.shape[0], c:c + a.shape[1]]
             clear = (a == 3) | (a == 4)
             cur[clear] = a[clear]
-            cq[clear] = q[clear]
             fill = (cur == 0) & (a != 0)
             cur[fill] = a[fill]
-            cq[fill] = q[fill]
-    return cls, ndsi_q, sorted(passes)
+    return cls, sorted(passes)
 
 
 def reduce2(a, rank=OBS_RANK):
@@ -146,7 +142,7 @@ def main():
     ap.add_argument("--out", default="docs/data/view")
     a = ap.parse_args()
     with rasterio.open(f"{a.ledger}/grid/cellmap.tif") as cm:
-        cls, _, passes = load_day(a.ledger, a.date, cm)
+        cls, passes = load_day(a.ledger, a.date, cm)
         z9 = tuple(map(int, cm.tags()["z9_tiles"].split("/")))
         bounds = cm.bounds
     if not cls.any():
