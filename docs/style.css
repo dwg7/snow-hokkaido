@@ -5,7 +5,7 @@
 .sh-p { margin: 6px 14px; line-height: 1.6; font-size: 13px; }
 .sh-muted { color: var(--sh-muted); }
 .sh-map { position: absolute; inset: 0; }
-.sh-legend { position: absolute; left: 10px; bottom: 28px; z-index: 2; background: var(--sh-panel); color: var(--sh-ink);
+.sh-legend { position: absolute; right: 10px; bottom: 28px; z-index: 2; background: var(--sh-panel); color: var(--sh-ink);
   border: 1px solid #3a3a37; border-radius: 6px; padding: 8px 10px; font-size: 12px; line-height: 1.5; }
 .sh-legend-t { font-weight: 600; margin-bottom: 4px; }
 .sh-legend-r i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: -2px; border: 1px solid #555; }
