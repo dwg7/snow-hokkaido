@@ -38,3 +38,17 @@ So the cell rule "snow if more snow than green pixels among the clear ones" is w
 4. Accept the under-count for now and show winter values as "open land only"; label the dashboard accordingly.
 
 Nothing was changed. A 150-day backfill with the current rule would produce winter snow rates that are too low.
+
+## Rule comparison on winter windows (2026-10-24)
+
+Owner's direction: do not special-case forests; the goal is to *recognise the snow situation in our own representation*, not to compute a better index, so simply trusting SCL is acceptable. Five cell rules were drawn side by side (11 x 11 pixel blocks, approximate; only cells with at least 80% clear pixels are judged; `docs/validation/winter-rules-*.jpg`, panels left to right: true colour, A, B, C, D, E):
+
+| rule | definition | Kamikawa hills 02-10 (snow share of clear cells) | coast 02-12 |
+|---|---|---|---|
+| A | current: NDSI >= 0.42, snow if >= 50% of clear pixels | 42% | 7% |
+| B | NDSI >= 0.36, snow if >= 30% | 59% | 12% |
+| C | cell mean NDSI >= 0.20 (water not excluded) | 66% | 61% (**paints the sea as snow**) |
+| D | pixel NDSI/NDVI forest-aware, >= 30% (untuned) | 72% | 26% (speckled) |
+| E | SCL class 11, snow if a majority of clear pixels | 52% | 21% |
+
+By eye: A leaves snow-covered hills with trees green. **B and E look almost the same** and follow the white ground in the true-colour panel; C fails over water and D is noisy. October (Daisetsuzan 10-18): SCL and our rule already agree (96.6% of our snow pixels are SCL snow), and on the cloud-edge case SCL is far more conservative (4 pixels against 2,480). There is **no ground truth** here either; "looks right" means it matches the visible white ground.
