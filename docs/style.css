@@ -1,5 +1,5 @@
 /* snow-hokkaido views inside Open MCT (Espresso, dark). Floating panels get their own opaque surface token. */
-:root { --sh-panel: #1f1f1e; --sh-ink: #f2f1ec; --sh-muted: #a9a79d; }
+:root { --sh-panel: #1f1f1e; --sh-ink: #f2f1ec; --sh-muted: #bfbdb3; }
 .sh-host { height: 100%; width: 100%; position: relative; color: var(--sh-ink); }
 .sh-h { margin: 12px 14px 4px; font-size: 18px; }
 .sh-p { margin: 6px 14px; line-height: 1.6; font-size: 13px; }
@@ -53,3 +53,9 @@ span.sh-legend-cell { height: auto; }
 .sh-dp-day:not(:disabled):hover { background: #4f7391; }
 .sh-dp-day.sh-dp-sel { outline: 2px solid #f2c94c; outline-offset: -1px; font-weight: 700; }
 .sh-dp-n { color: var(--sh-muted); font-size: 10px; margin-top: 6px; }
+/* readability and viewer mode (issue #7; docs/shell.js) */
+body { font-size: 13px; line-height: 1.5; }
+.sh-viewer-btn { position: fixed; top: 6px; right: 150px; z-index: 50; background: #2c2c2a; color: var(--sh-ink); border: 1px solid #4a4a46; border-radius: 4px; padding: 3px 10px; font-size: 12px; cursor: pointer; }
+.sh-viewer-btn:hover { background: #3a3a37; }
+.sh-viewer .l-shell__pane-tree, .sh-viewer .l-shell__pane-inspector, .sh-viewer .l-shell__head > :not(.sh-viewer-btn), .sh-viewer .l-shell__drawer { display: none !important; }
+.sh-viewer .sh-viewer-btn { top: 6px; right: 110px; }
