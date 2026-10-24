@@ -46,3 +46,7 @@ Two readings of "180 days": (A) **forward**: run the daily update for 180 days; 
 ## SCL-first reading: measured effect (2026-10-22)
 
 One granule x tile window with no clear pixel (2026-10-03, tile 9/454/190) took 8.4 s without and 5.1 s with the SCL-first skip; the output was identical. Only one such window turned up in two cloudy days, so the share of skippable windows in winter and the overall saving are **not measured**.
+
+## Result of the winter backfill (2026-10-24)
+
+182 days (2026-03-31 back to 2025-10-01) were processed with `algo-v1-dev4` (SCL snow only): **431 min in total, 2.4 min per day, 0 failed files** (4 workers, one machine; a few reads were retried). Intermediate rebuilds (`just checkpoint`, once per completed month, 10-20 min each) worked; the whole timeline now spans 2025-10-01 .. 2026-10-21 (185 observed days, 203 state days; April-September is not covered). Local size: obs 147 MB, display tiles 381 MB. The "published about 0.5 GB" estimate above is still a guess: the staging directory for this range has not been built. Tests: 243 pass. Not checked: the winter values against ground truth (see `docs/validation-winter-trial.md`); the upload.

@@ -139,16 +139,16 @@ def main():
         (out / "series" / f"{key}.json").write_text(json.dumps(doc, ensure_ascii=False, indent=1))
 
     # time series (one value per observed day) from derived/daily
-    dp = f"{a.ledger}/derived/daily/season={season_of(ev)}.parquet"
-    if Path(dp).exists():
-        day_df = pd.read_parquet(dp)
+    dps = sorted(glob.glob(f"{a.ledger}/derived/daily/season=*.parquet"))  # all seasons, one timeline
+    if dps:
+        day_df = pd.concat([pd.read_parquet(p) for p in dps], ignore_index=True)
         for key in TS_METRICS:
             doc = build_ts(day_df, key)
             (out / "series" / f"{key}_ts.json").write_text(json.dumps(doc, ensure_ascii=False, separators=(",", ":")))
 
-    sp0 = f"{a.ledger}/derived/state/season={season_of(ev)}.parquet"
-    if Path(sp0).exists():
-        state_df = pd.read_parquet(sp0)
+    sps = sorted(glob.glob(f"{a.ledger}/derived/state/season=*.parquet"))
+    if sps:
+        state_df = pd.concat([pd.read_parquet(p) for p in sps], ignore_index=True)
         for key in STATE_TS:
             (out / "series" / f"{key}_ts.json").write_text(
                 json.dumps(build_state_ts(state_df, key), ensure_ascii=False, separators=(",", ":")))
