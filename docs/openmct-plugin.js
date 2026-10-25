@@ -352,9 +352,9 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
     // Animation: the whole period in order; the next frame is prefetched while the current one is shown, and a frame is
     // shown only once it has loaded, so a slow connection slows the animation instead of flickering.
     const play = mkBtn('▶ 再生', '全期間を順に再生する', 'sh-dp-play');
-    const speed = document.createElement('select'); speed.className = 'sh-dp-speed'; speed.title = '1秒に進む日数';
-    for (const v of [1, 2, 4, 8]) { const o = document.createElement('option'); o.value = v; o.textContent = v + '日/秒'; speed.appendChild(o); }
-    speed.value = '2';
+    const speed = document.createElement('select'); speed.className = 'sh-dp-speed'; speed.title = '1日分を表示する秒数';
+    for (const v of [0.25, 0.5, 1, 2, 4, 8]) { const o = document.createElement('option'); o.value = v; o.textContent = v + '秒/日'; speed.appendChild(o); }
+    speed.value = '1';
     const loopLab = el('label', 'sh-dp-loop'); const loop = document.createElement('input'); loop.type = 'checkbox'; loop.checked = true;
     loopLab.appendChild(loop); loopLab.appendChild(document.createTextNode(' くり返し'));
     let playing = false, run = 0;
@@ -378,7 +378,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
           }
           opts.prefetch(ahead);
         }
-        await new Promise((r) => setTimeout(r, 1000 / +speed.value));
+        await new Promise((r) => setTimeout(r, 1000 * +speed.value));  // seconds per day: one frame stays this long
         if (!playing || my !== run) break;
         await pick(nxt, true);
       }
