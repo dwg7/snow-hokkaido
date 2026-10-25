@@ -132,7 +132,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
         map.addLayer({ id, type: 'raster', source: id, paint: { 'raster-resampling': 'nearest', 'raster-opacity': HIDDEN } }, rasterBefore);
         if (cb && !cb.checked) map.setLayoutProperty(id, 'visibility', 'none');
         if (!tracker) tracker = setInterval(trackBuffers, 100);
-        return { id, key: bufKey(i), n: 0, since: performance.now() };
+        return { id, key: bufKey(i), n: 0, since: performance.now(), created: performance.now(), ready: false };
       }
       function drop(bf) {
         if (!bf) return;
@@ -143,8 +143,11 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
       // A buffer is ready when its count of loaded tiles is above 0 and has not changed for 300 ms. (MapLibre's
       // isSourceLoaded() never turns true here, and tiles outside the PMTiles archive stay "loading" for good, so
       // "nothing is loading" cannot be used.) The count comes from the source cache's tile table, an internal API of
-      // maplibre-gl 5.6.0; a 5 s cap in loaded() guards against that changing. One 100 ms timer updates every buffer.
-      let tracker = null;
+      // maplibre-gl 5.6.0; a 12 s cap in loaded() guards against that changing. One 100 ms timer updates every buffer.
+      let tracker = null, loadMs = 0;  // loadMs: moving average of the time one date takes to load
+      // How many dates to prefetch: one while loading keeps up with the frame time, two when it does not (a slow connection
+      // gains little from more, they share the bandwidth).
+      const prefetchDepth = (frameMs) => (loadMs > 0.8 * frameMs ? 2 : 1);
       function trackBuffers() {
         const now = performance.now();
         for (const bf of [cur, ...pre.values()]) {
@@ -152,15 +155,19 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
           const c = map.style && map.style.sourceCaches && map.style.sourceCaches[bf.id];
           const n = c && c._tiles ? Object.values(c._tiles).filter((t) => t.state === 'loaded').length : 0;
           if (n !== bf.n) { bf.n = n; bf.since = now; }
+          if (!bf.ready && settled(bf)) {  // first time ready: remember how long a date takes to load on this connection
+            bf.ready = true;
+            loadMs = loadMs ? 0.6 * loadMs + 0.4 * (now - bf.created) : now - bf.created;
+          }
         }
         if (state.disposed) clearInterval(tracker);
       }
       const settled = (bf) => bf.n > 0 && performance.now() - bf.since >= 300;
-      function loaded(bf) {  // resolves when the buffer is ready, after 5 s at the latest, or at once while the cells are hidden
+      function loaded(bf) {  // resolves when the buffer is ready, after 12 s at the latest, or at once while the cells are hidden
         return new Promise((resolve) => {
           const done = () => { clearInterval(poll); clearTimeout(cap); resolve(); };
           const poll = setInterval(() => { if (!cb.checked || settled(bf)) done(); }, 100);
-          const cap = setTimeout(done, 5000);
+          const cap = setTimeout(done, 12000);
         });
       }
       // Immediate replacement (first draw, mode change).
@@ -213,7 +220,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
       cb.addEventListener('change', () => {
         for (const bf of [cur, ...pre.values()]) if (bf && map.getLayer(bf.id)) map.setLayoutProperty(bf.id, 'visibility', cb.checked ? 'visible' : 'none');
       });
-      const picker = datePicker((i) => { mode.index = i; return showDate(i); }, { prefetch });
+      const picker = datePicker((i) => { mode.index = i; return showDate(i); }, { prefetch, depth: prefetchDepth });
 
       function renderLegend() {
         legendBody.textContent = '';
@@ -247,7 +254,16 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
         if (!view[val].length) continue;
         const lab = el('label', 'sh-mode'); const rb = document.createElement('input');
         rb.type = 'radio'; rb.name = 'sh-mode'; rb.checked = mode.value === val;
-        rb.addEventListener('change', () => { picker.stop(); mode.value = val; mode.index = dates().length - 1; showLayer(); });
+        rb.addEventListener('change', () => {
+          picker.stop();
+          const day = dates()[mode.index];  // keep the date: the same day in the other list, else the last earlier day (else the first)
+          mode.value = val;
+          const list = dates();
+          let at = -1;
+          for (let i = 0; i < list.length && list[i] <= day; i++) at = i;
+          mode.index = at >= 0 ? at : 0;
+          showLayer();
+        });
         lab.appendChild(rb); lab.appendChild(document.createTextNode(' ' + label + ' '));
         modes.appendChild(lab);
       }
@@ -363,15 +379,15 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
       if (!dates.length) return;
       playing = true; const my = ++run; play.textContent = '⏸ 停止';
       if (idx >= dates.length - 1) {  // start again from the first date, with its first frames already loading
-        if (opts && opts.prefetch) opts.prefetch([0, 1, 2].filter((j) => j < dates.length));
+        if (opts && opts.prefetch) opts.prefetch([0, 1].filter((j) => j < dates.length));
         await pick(0, true);
       }
       while (playing && my === run && root.isConnected) {
         let nxt = idx + 1;
         if (nxt >= dates.length) { if (!loop.checked) { stop(); break; } nxt = 0; }
-        if (opts && opts.prefetch) {  // the next three dates, wrapping round when the animation repeats
-          const ahead = [];
-          for (let k = 0; k < 3; k++) {
+        if (opts && opts.prefetch) {  // the next dates (as many as opts.depth asks for), wrapping round when the animation repeats
+          const ahead = [], depth = opts.depth ? opts.depth(1000 * +speed.value) : 3;
+          for (let k = 0; k < depth; k++) {
             let j = nxt + k;
             if (j >= dates.length) { if (!loop.checked) break; j %= dates.length; }
             ahead.push(j);
