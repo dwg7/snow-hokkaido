@@ -32,11 +32,11 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
   // Basemap: bvmap-starlight (GSI optimized vector tiles), served by stars.optgeo.org (CORS allowed).
   const STYLE_URL = (options && options.styleUrl) || 'https://stars.optgeo.org/style/bvmap-starlight.json';
   const TABULAR = [
-    { key: 'snow_rate', name: '積雪率' },
+    { key: 'snow_rate', name: '積雪率 (当日)' },
     { key: 'cloud_rate', name: '雲の割合' },
     { key: 'visible_rate', name: '見えた割合' },
     { key: 'scan_rate', name: '撮影できた割合' },
-    { key: 'snow_rate_last', name: '積雪率・最終既知' },
+    { key: 'snow_rate_last', name: '積雪率 (累積)' },
     { key: 'freshness', name: '情報の新しさ' }
   ];
 
@@ -130,9 +130,8 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
         const url = new URL(view.base + view.templates[mode.value].replace('{date}', dates()[i]), document.baseURI).href;
         map.addSource(id, { type: 'raster', url: 'pmtiles://' + url, tileSize: 256 });
         map.addLayer({ id, type: 'raster', source: id, paint: { 'raster-resampling': 'nearest', 'raster-opacity': HIDDEN } }, rasterBefore);
-        if (cb && !cb.checked) map.setLayoutProperty(id, 'visibility', 'none');
         if (!tracker) tracker = setInterval(trackBuffers, 100);
-        return { id, key: bufKey(i), n: 0, since: performance.now() };
+        return { id, key: bufKey(i), n: 0, since: performance.now(), created: performance.now(), ready: false };
       }
       function drop(bf) {
         if (!bf) return;
@@ -143,8 +142,11 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
       // A buffer is ready when its count of loaded tiles is above 0 and has not changed for 300 ms. (MapLibre's
       // isSourceLoaded() never turns true here, and tiles outside the PMTiles archive stay "loading" for good, so
       // "nothing is loading" cannot be used.) The count comes from the source cache's tile table, an internal API of
-      // maplibre-gl 5.6.0; a 5 s cap in loaded() guards against that changing. One 100 ms timer updates every buffer.
-      let tracker = null;
+      // maplibre-gl 5.6.0; a 12 s cap in loaded() guards against that changing. One 100 ms timer updates every buffer.
+      let tracker = null, loadMs = 0;  // loadMs: moving average of the time one date takes to load
+      // How many dates to prefetch: one while loading keeps up with the frame time, two when it does not (a slow connection
+      // gains little from more, they share the bandwidth).
+      const prefetchDepth = (frameMs) => (loadMs > 0.8 * frameMs ? 2 : 1);
       function trackBuffers() {
         const now = performance.now();
         for (const bf of [cur, ...pre.values()]) {
@@ -152,15 +154,19 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
           const c = map.style && map.style.sourceCaches && map.style.sourceCaches[bf.id];
           const n = c && c._tiles ? Object.values(c._tiles).filter((t) => t.state === 'loaded').length : 0;
           if (n !== bf.n) { bf.n = n; bf.since = now; }
+          if (!bf.ready && settled(bf)) {  // first time ready: remember how long a date takes to load on this connection
+            bf.ready = true;
+            loadMs = loadMs ? 0.6 * loadMs + 0.4 * (now - bf.created) : now - bf.created;
+          }
         }
         if (state.disposed) clearInterval(tracker);
       }
       const settled = (bf) => bf.n > 0 && performance.now() - bf.since >= 300;
-      function loaded(bf) {  // resolves when the buffer is ready, after 5 s at the latest, or at once while the cells are hidden
+      function loaded(bf) {  // resolves when the buffer is ready, after 12 s at the latest, or at once while the cells are hidden
         return new Promise((resolve) => {
           const done = () => { clearInterval(poll); clearTimeout(cap); resolve(); };
-          const poll = setInterval(() => { if (!cb.checked || settled(bf)) done(); }, 100);
-          const cap = setTimeout(done, 5000);
+          const poll = setInterval(() => { if (settled(bf)) done(); }, 100);
+          const cap = setTimeout(done, 12000);
         });
       }
       // Immediate replacement (first draw, mode change).
@@ -185,7 +191,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
       }
       // Keep the buffers of the given upcoming dates loading, and drop any other prefetched ones.
       function prefetch(indices) {
-        if (!cur || !cb.checked) return;
+        if (!cur) return;
         const want = new Map(indices.map((i) => [bufKey(i), i]));
         for (const [k, bf] of [...pre]) if (!want.has(k)) { drop(bf); pre.delete(k); }
         for (const [k, i] of want) if (!pre.has(k) && k !== cur.key) pre.set(k, addBuffer(i));
@@ -208,12 +214,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
       const legend = el('div', 'sh-legend');
       const legendBody = el('div');
       const controls = el('div', 'sh-legend-n');
-      const cb = document.createElement('input');
-      cb.type = 'checkbox'; cb.checked = true;
-      cb.addEventListener('change', () => {
-        for (const bf of [cur, ...pre.values()]) if (bf && map.getLayer(bf.id)) map.setLayoutProperty(bf.id, 'visibility', cb.checked ? 'visible' : 'none');
-      });
-      const picker = datePicker((i) => { mode.index = i; return showDate(i); }, { prefetch });
+      const picker = datePicker((i) => { mode.index = i; return showDate(i); }, { prefetch, depth: prefetchDepth });
 
       function renderLegend() {
         legendBody.textContent = '';
@@ -225,39 +226,44 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
             r.appendChild(sw); r.appendChild(document.createTextNode(meta.classes[k]));
             legendBody.appendChild(r);
           }
-          legendBody.appendChild(el('div', 'sh-legend-n', 'その日に撮れた場所だけ。透明 = 走査外'));
+          legendBody.appendChild(el('div', 'sh-legend-n', '当日 = その日に撮れた場所だけ。透明 = 撮れていない'));
         } else {
           const r0 = el('div', 'sh-legend-r sh-legend-head');
           r0.appendChild(el('span', 'sh-legend-lab', '見えてから(日)'));
           for (const l of AGE_LABELS) r0.appendChild(el('span', 'sh-legend-cell', l));
           legendBody.appendChild(r0);
-          for (const [name, off] of [['雪', 6], ['緑 (雪なし)', 1]]) {
+          for (const [name, off] of [['雪', 6], ['雪以外', 1]]) {
             const r = el('div', 'sh-legend-r');
             r.appendChild(el('span', 'sh-legend-lab', name));
             for (let i = 0; i < 5; i++) { const sw = el('i', 'sh-legend-cell'); sw.style.background = view.palette.state[off + i]; r.appendChild(sw); }
             legendBody.appendChild(r);
           }
-          legendBody.appendChild(el('div', 'sh-legend-n', '最後に晴れて見えた状態。色が薄いほど古い。透明 = まだ一度も見えていない'));
+          legendBody.appendChild(el('div', 'sh-legend-n', '累積 = 最後に晴れて見えた状態。色が薄いほど古い。透明 = まだ一度も見えていない'));
         }
         picker.set(dates(), mode.index);
       }
 
       const modes = el('div', 'sh-legend-n');
-      for (const [val, label] of [['state', '最終既知'], ['obs', '観測値']]) {
+      for (const [val, label] of [['state', '累積'], ['obs', '当日']]) {
         if (!view[val].length) continue;
         const lab = el('label', 'sh-mode'); const rb = document.createElement('input');
         rb.type = 'radio'; rb.name = 'sh-mode'; rb.checked = mode.value === val;
-        rb.addEventListener('change', () => { picker.stop(); mode.value = val; mode.index = dates().length - 1; showLayer(); });
+        rb.addEventListener('change', () => {
+          picker.stop();
+          const day = dates()[mode.index];  // keep the date: the same day in the other list, else the last earlier day (else the first)
+          mode.value = val;
+          const list = dates();
+          let at = -1;
+          for (let i = 0; i < list.length && list[i] <= day; i++) at = i;
+          mode.index = at >= 0 ? at : 0;
+          showLayer();
+        });
         lab.appendChild(rb); lab.appendChild(document.createTextNode(' ' + label + ' '));
         modes.appendChild(lab);
       }
       controls.appendChild(modes);
       const sliderRow = el('div'); sliderRow.appendChild(picker.el);
       controls.appendChild(sliderRow);
-      const tg = el('div'); const tgl = el('label');
-      tgl.appendChild(cb); tgl.appendChild(document.createTextNode(' セルを表示'));
-      tg.appendChild(tgl);
-      controls.appendChild(tg);
       legend.appendChild(legendBody);
       legend.appendChild(controls);
       legend.appendChild(el('div', 'sh-legend-n sh-attr', 'Contains modified Copernicus Sentinel data 2026 / 国土数値情報(行政区域データ)(国土交通省)をもとに作成 / 国土地理院'));
@@ -352,9 +358,9 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
     // Animation: the whole period in order; the next frame is prefetched while the current one is shown, and a frame is
     // shown only once it has loaded, so a slow connection slows the animation instead of flickering.
     const play = mkBtn('▶ 再生', '全期間を順に再生する', 'sh-dp-play');
-    const speed = document.createElement('select'); speed.className = 'sh-dp-speed'; speed.title = '1秒に進む日数';
-    for (const v of [1, 2, 4, 8]) { const o = document.createElement('option'); o.value = v; o.textContent = v + '日/秒'; speed.appendChild(o); }
-    speed.value = '2';
+    const speed = document.createElement('select'); speed.className = 'sh-dp-speed'; speed.title = '1日分を表示する秒数';
+    for (const v of [0.25, 0.5, 1, 2, 4, 8]) { const o = document.createElement('option'); o.value = v; o.textContent = v + '秒/日'; speed.appendChild(o); }
+    speed.value = '1';
     const loopLab = el('label', 'sh-dp-loop'); const loop = document.createElement('input'); loop.type = 'checkbox'; loop.checked = true;
     loopLab.appendChild(loop); loopLab.appendChild(document.createTextNode(' くり返し'));
     let playing = false, run = 0;
@@ -363,22 +369,22 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
       if (!dates.length) return;
       playing = true; const my = ++run; play.textContent = '⏸ 停止';
       if (idx >= dates.length - 1) {  // start again from the first date, with its first frames already loading
-        if (opts && opts.prefetch) opts.prefetch([0, 1, 2].filter((j) => j < dates.length));
+        if (opts && opts.prefetch) opts.prefetch([0, 1].filter((j) => j < dates.length));
         await pick(0, true);
       }
       while (playing && my === run && root.isConnected) {
         let nxt = idx + 1;
         if (nxt >= dates.length) { if (!loop.checked) { stop(); break; } nxt = 0; }
-        if (opts && opts.prefetch) {  // the next three dates, wrapping round when the animation repeats
-          const ahead = [];
-          for (let k = 0; k < 3; k++) {
+        if (opts && opts.prefetch) {  // the next dates (as many as opts.depth asks for), wrapping round when the animation repeats
+          const ahead = [], depth = opts.depth ? opts.depth(1000 * +speed.value) : 3;
+          for (let k = 0; k < depth; k++) {
             let j = nxt + k;
             if (j >= dates.length) { if (!loop.checked) break; j %= dates.length; }
             ahead.push(j);
           }
           opts.prefetch(ahead);
         }
-        await new Promise((r) => setTimeout(r, 1000 / +speed.value));
+        await new Promise((r) => setTimeout(r, 1000 * +speed.value));  // seconds per day: one frame stays this long
         if (!playing || my !== run) break;
         await pick(nxt, true);
       }
@@ -422,7 +428,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
           : ATTRIBUTION + '。日付は、◀ ▶ かカレンダーで選べます (その日に撮れた観測だけの値。同じ日に複数回撮れた場所は、最後に晴れて見えた観測を使います)。写らなかった市町村は無データです。「見えた割合」と「走査できた割合」は、市町村全体に対する割合なので、一部しか写らなかった日は小さくなります。積雪率と雲の割合は、写った範囲だけの割合です。';
       } else {
         state.map.setSeries(latest);
-        noteText = ATTRIBUTION + '。最新の日の値です (日付は上の見出し)。最終既知の計算は、雲で見えなかった場所に、最後に見えた状態を使います。';
+        noteText = ATTRIBUTION + '。最新の日の値です (日付は上の見出し)。累積の計算は、雲で見えなかった場所に、最後に見えた状態を使います。';
       }
       host.appendChild(el('div', 'sh-tabular-note', noteText));
     }).catch((err) => { host.appendChild(el('p', 'sh-p', '読み込みに失敗: ' + err.message)); });

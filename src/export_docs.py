@@ -176,7 +176,7 @@ def main():
             (out / "series" / f"{key}.json").write_text(json.dumps(doc, ensure_ascii=False, indent=1))
 
     meta = {"asOf": as_of, "scene": scene,
-            "classes": {"0": "走査外", "1": "雲", "2": "影", "3": "緑 (雪なし)", "4": "雪"},
+            "classes": {"0": "走査外", "1": "雲", "2": "影", "3": "雪以外", "4": "雪"},
             "colors": {k: "#%02x%02x%02x" % v[:3] for k, v in PALETTE.items() if k},
             "algo_version": ev["algo_version"].iloc[0]}
     (out / "stage1.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1))
