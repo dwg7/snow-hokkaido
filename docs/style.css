@@ -59,3 +59,6 @@ body { font-size: 13px; line-height: 1.5; }
 .sh-viewer-btn:hover { background: #3a3a37; }
 .sh-viewer .l-shell__pane-tree, .sh-viewer .l-shell__pane-inspector, .sh-viewer .l-shell__head > :not(.sh-viewer-btn), .sh-viewer .l-shell__drawer { display: none !important; }
 .sh-viewer .sh-viewer-btn { top: 6px; right: 110px; }
+.sh-dp-speed { background: #2c2c2a; color: var(--sh-ink); border: 1px solid #4a4a46; border-radius: 4px; font-size: 12px; padding: 2px 4px; }
+.sh-dp-loop { font-size: 12px; color: var(--sh-muted); }
+.sh-dp-play { min-width: 5.5em; }

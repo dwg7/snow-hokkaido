@@ -118,15 +118,77 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
       // work and labels stay on top; the basemap already draws prefecture / subprefecture / municipality boundaries for
       // the whole region. 'nearest' keeps cell edges crisp; it rendered black for an image source in the embedded
       // browser (cause unconfirmed), so check other browsers too.
+      // Double buffering: the next dates' rasters are added with raster-opacity 0.001 (loaded, practically not drawn; opacity values
+      // below 1 rendered black in the embedded browser, so only 0.001 and 1 are used) and shown (opacity 1, old one
+      // removed) only after their tiles have loaded. `pre` holds the prefetched buffers by key.
+      const HIDDEN = 0.001;  // MapLibre loads no tiles for a raster layer at opacity 0, so "hidden" is practically transparent instead
+      let seq = 0, token = 0, cur = null;
+      const pre = new Map();
+      const bufKey = (i) => mode.value + ':' + dates()[i];
+      function addBuffer(i) {
+        const id = 'obs-' + (++seq);
+        const url = new URL(view.base + view.templates[mode.value].replace('{date}', dates()[i]), document.baseURI).href;
+        map.addSource(id, { type: 'raster', url: 'pmtiles://' + url, tileSize: 256 });
+        map.addLayer({ id, type: 'raster', source: id, paint: { 'raster-resampling': 'nearest', 'raster-opacity': HIDDEN } }, rasterBefore);
+        if (cb && !cb.checked) map.setLayoutProperty(id, 'visibility', 'none');
+        if (!tracker) tracker = setInterval(trackBuffers, 100);
+        return { id, key: bufKey(i), n: 0, since: performance.now() };
+      }
+      function drop(bf) {
+        if (!bf) return;
+        if (map.getLayer(bf.id)) map.removeLayer(bf.id);
+        if (map.getSource(bf.id)) map.removeSource(bf.id);
+      }
+      function dropAllPre() { for (const bf of pre.values()) drop(bf); pre.clear(); }
+      // A buffer is ready when its count of loaded tiles is above 0 and has not changed for 300 ms. (MapLibre's
+      // isSourceLoaded() never turns true here, and tiles outside the PMTiles archive stay "loading" for good, so
+      // "nothing is loading" cannot be used.) The count comes from the source cache's tile table, an internal API of
+      // maplibre-gl 5.6.0; a 5 s cap in loaded() guards against that changing. One 100 ms timer updates every buffer.
+      let tracker = null;
+      function trackBuffers() {
+        const now = performance.now();
+        for (const bf of [cur, ...pre.values()]) {
+          if (!bf) continue;
+          const c = map.style && map.style.sourceCaches && map.style.sourceCaches[bf.id];
+          const n = c && c._tiles ? Object.values(c._tiles).filter((t) => t.state === 'loaded').length : 0;
+          if (n !== bf.n) { bf.n = n; bf.since = now; }
+        }
+        if (state.disposed) clearInterval(tracker);
+      }
+      const settled = (bf) => bf.n > 0 && performance.now() - bf.since >= 300;
+      function loaded(bf) {  // resolves when the buffer is ready, after 5 s at the latest, or at once while the cells are hidden
+        return new Promise((resolve) => {
+          const done = () => { clearInterval(poll); clearTimeout(cap); resolve(); };
+          const poll = setInterval(() => { if (!cb.checked || settled(bf)) done(); }, 100);
+          const cap = setTimeout(done, 5000);
+        });
+      }
+      // Immediate replacement (first draw, mode change).
       function showLayer() {
-        if (map.getLayer('obs')) map.removeLayer('obs');
-        if (map.getSource('obs')) map.removeSource('obs');
-        const file = view.templates[mode.value].replace('{date}', dates()[mode.index]);
-        const url = new URL(view.base + file, document.baseURI).href;
-        map.addSource('obs', { type: 'raster', url: 'pmtiles://' + url, tileSize: 256 });
-        map.addLayer({ id: 'obs', type: 'raster', source: 'obs', paint: { 'raster-resampling': 'nearest' } }, rasterBefore);
-        if (cb && !cb.checked) map.setLayoutProperty('obs', 'visibility', 'none');
+        token++;
+        drop(cur); dropAllPre();
+        cur = addBuffer(mode.index);
+        map.setPaintProperty(cur.id, 'raster-opacity', 1);
         renderLegend();
+      }
+      // Show a date once it has loaded; the promise resolves when it is on screen.
+      async function showDate(i) {
+        const my = ++token;
+        const key = bufKey(i);
+        let bf = pre.get(key);
+        if (bf) pre.delete(key); else bf = addBuffer(i);
+        await loaded(bf);
+        if (my !== token) { drop(bf); return; }  // a newer request took over
+        map.setPaintProperty(bf.id, 'raster-opacity', 1);
+        const old = cur; cur = bf; drop(old);
+        renderLegend();
+      }
+      // Keep the buffers of the given upcoming dates loading, and drop any other prefetched ones.
+      function prefetch(indices) {
+        if (!cur || !cb.checked) return;
+        const want = new Map(indices.map((i) => [bufKey(i), i]));
+        for (const [k, bf] of [...pre]) if (!want.has(k)) { drop(bf); pre.delete(k); }
+        for (const [k, i] of want) if (!pre.has(k) && k !== cur.key) pre.set(k, addBuffer(i));
       }
 
       map.on('style.load', () => {
@@ -148,8 +210,10 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
       const controls = el('div', 'sh-legend-n');
       const cb = document.createElement('input');
       cb.type = 'checkbox'; cb.checked = true;
-      cb.addEventListener('change', () => { if (map.getLayer('obs')) map.setLayoutProperty('obs', 'visibility', cb.checked ? 'visible' : 'none'); });
-      const picker = datePicker((i) => { mode.index = i; showLayer(); });
+      cb.addEventListener('change', () => {
+        for (const bf of [cur, ...pre.values()]) if (bf && map.getLayer(bf.id)) map.setLayoutProperty(bf.id, 'visibility', cb.checked ? 'visible' : 'none');
+      });
+      const picker = datePicker((i) => { mode.index = i; return showDate(i); }, { prefetch });
 
       function renderLegend() {
         legendBody.textContent = '';
@@ -183,7 +247,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
         if (!view[val].length) continue;
         const lab = el('label', 'sh-mode'); const rb = document.createElement('input');
         rb.type = 'radio'; rb.name = 'sh-mode'; rb.checked = mode.value === val;
-        rb.addEventListener('change', () => { mode.value = val; mode.index = dates().length - 1; showLayer(); });
+        rb.addEventListener('change', () => { picker.stop(); mode.value = val; mode.index = dates().length - 1; showLayer(); });
         lab.appendChild(rb); lab.appendChild(document.createTextNode(' ' + label + ' '));
         modes.appendChild(lab);
       }
@@ -223,7 +287,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
   // dates with data can be chosen, and a jump to the latest. `dates` are ascending 'YYYY-MM-DD' strings.
   const WEEK = ['日', '月', '火', '水', '木', '金', '土'];
   const pad = (n) => String(n).padStart(2, '0');
-  function datePicker(onPick) {
+  function datePicker(onPick, opts) {
     const root = el('div', 'sh-dp'); root.tabIndex = 0;
     const mkBtn = (text, title, cls) => { const b = el('button', 'sh-dp-b ' + (cls || ''), text); b.type = 'button'; b.title = title; return b; };
     const prev = mkBtn('◀', '前の観測日'), next = mkBtn('▶', '次の観測日');
@@ -231,7 +295,12 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
     const pop = el('div', 'sh-dp-pop'); pop.hidden = true;
     let dates = [], idx = 0, ym = [2000, 1];
     const wd = (iso) => WEEK[new Date(iso + 'T00:00:00Z').getUTCDay()];
-    function pick(i) { if (i < 0 || i >= dates.length || i === idx) return; idx = i; onPick(i); update(); }
+    function pick(i, auto) {
+      if (!auto) stop();  // a manual choice ends the animation
+      if (i < 0 || i >= dates.length || i === idx) return Promise.resolve();
+      idx = i; update();
+      return Promise.resolve(onPick(i));
+    }
     function renderPop() {
       pop.textContent = '';
       const first = dates[0].slice(0, 7), last = dates[dates.length - 1].slice(0, 7);
@@ -277,13 +346,50 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
       if (e.key === 'ArrowLeft') { pick(idx - 1); e.preventDefault(); }
       else if (e.key === 'ArrowRight') { pick(idx + 1); e.preventDefault(); }
       else if (e.key === 'Escape') pop.hidden = true;
+      else if (e.key === ' ') { if (playing) stop(); else start(); e.preventDefault(); }
     });
     document.addEventListener('mousedown', (e) => { if (!pop.hidden && root.isConnected && !root.contains(e.target)) pop.hidden = true; });
-    const bar = el('div', 'sh-dp-bar');
+    // Animation: the whole period in order; the next frame is prefetched while the current one is shown, and a frame is
+    // shown only once it has loaded, so a slow connection slows the animation instead of flickering.
+    const play = mkBtn('▶ 再生', '全期間を順に再生する', 'sh-dp-play');
+    const speed = document.createElement('select'); speed.className = 'sh-dp-speed'; speed.title = '1秒に進む日数';
+    for (const v of [1, 2, 4, 8]) { const o = document.createElement('option'); o.value = v; o.textContent = v + '日/秒'; speed.appendChild(o); }
+    speed.value = '2';
+    const loopLab = el('label', 'sh-dp-loop'); const loop = document.createElement('input'); loop.type = 'checkbox'; loop.checked = true;
+    loopLab.appendChild(loop); loopLab.appendChild(document.createTextNode(' くり返し'));
+    let playing = false, run = 0;
+    function stop() { playing = false; run++; play.textContent = '▶ 再生'; }
+    async function start() {
+      if (!dates.length) return;
+      playing = true; const my = ++run; play.textContent = '⏸ 停止';
+      if (idx >= dates.length - 1) {  // start again from the first date, with its first frames already loading
+        if (opts && opts.prefetch) opts.prefetch([0, 1, 2].filter((j) => j < dates.length));
+        await pick(0, true);
+      }
+      while (playing && my === run && root.isConnected) {
+        let nxt = idx + 1;
+        if (nxt >= dates.length) { if (!loop.checked) { stop(); break; } nxt = 0; }
+        if (opts && opts.prefetch) {  // the next three dates, wrapping round when the animation repeats
+          const ahead = [];
+          for (let k = 0; k < 3; k++) {
+            let j = nxt + k;
+            if (j >= dates.length) { if (!loop.checked) break; j %= dates.length; }
+            ahead.push(j);
+          }
+          opts.prefetch(ahead);
+        }
+        await new Promise((r) => setTimeout(r, 1000 / +speed.value));
+        if (!playing || my !== run) break;
+        await pick(nxt, true);
+      }
+    }
+    play.addEventListener('click', () => { if (playing) stop(); else start(); });
+    const bar = el('div', 'sh-dp-bar'), bar2 = el('div', 'sh-dp-bar');
     for (const n of [prev, label, next, latest]) bar.appendChild(n);
-    root.appendChild(bar); root.appendChild(pop);
+    for (const n of [play, speed, loopLab]) bar2.appendChild(n);
+    root.appendChild(bar); root.appendChild(bar2); root.appendChild(pop);
     return {
-      el: root, get index() { return idx; },
+      el: root, stop, get index() { return idx; },
       set(newDates, newIdx) { dates = newDates; idx = Math.min(Math.max(newIdx, 0), Math.max(dates.length - 1, 0)); update(); }
     };
   }
