@@ -25,7 +25,14 @@
     const tree = document.querySelector('.l-shell__pane-tree');
     if (tree && !done.tree) { done.tree = true; tree.style.width = '200px'; }
     const collapse = document.querySelector('.l-shell__pane-inspector .l-pane__collapse-button');
-    if (collapse && !done.inspector) { done.inspector = true; collapse.click(); }
+    if (collapse && !done.inspector) {
+      done.inspector = true;
+      // Open MCT's collapse writes a URL parameter through its router, which is not ready the moment the pane appears
+      setTimeout(() => {
+        const pane = document.querySelector('.l-shell__pane-inspector');
+        try { if (pane && !pane.classList.contains('l-pane--collapsed')) collapse.click(); } catch (e) { /* stays open; harmless */ }
+      }, 800);
+    }
     if (done.tree && done.inspector) mo.disconnect();
   });
   mo.observe(document.documentElement, { childList: true, subtree: true });
