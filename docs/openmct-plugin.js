@@ -32,11 +32,11 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
   // Basemap: bvmap-starlight (GSI optimized vector tiles), served by stars.optgeo.org (CORS allowed).
   const STYLE_URL = (options && options.styleUrl) || 'https://stars.optgeo.org/style/bvmap-starlight.json';
   const TABULAR = [
-    { key: 'snow_rate', name: '積雪率' },
+    { key: 'snow_rate', name: '積雪率 (当日)' },
     { key: 'cloud_rate', name: '雲の割合' },
     { key: 'visible_rate', name: '見えた割合' },
     { key: 'scan_rate', name: '撮影できた割合' },
-    { key: 'snow_rate_last', name: '積雪率・最終既知' },
+    { key: 'snow_rate_last', name: '積雪率 (累積)' },
     { key: 'freshness', name: '情報の新しさ' }
   ];
 
@@ -130,7 +130,6 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
         const url = new URL(view.base + view.templates[mode.value].replace('{date}', dates()[i]), document.baseURI).href;
         map.addSource(id, { type: 'raster', url: 'pmtiles://' + url, tileSize: 256 });
         map.addLayer({ id, type: 'raster', source: id, paint: { 'raster-resampling': 'nearest', 'raster-opacity': HIDDEN } }, rasterBefore);
-        if (cb && !cb.checked) map.setLayoutProperty(id, 'visibility', 'none');
         if (!tracker) tracker = setInterval(trackBuffers, 100);
         return { id, key: bufKey(i), n: 0, since: performance.now(), created: performance.now(), ready: false };
       }
@@ -166,7 +165,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
       function loaded(bf) {  // resolves when the buffer is ready, after 12 s at the latest, or at once while the cells are hidden
         return new Promise((resolve) => {
           const done = () => { clearInterval(poll); clearTimeout(cap); resolve(); };
-          const poll = setInterval(() => { if (!cb.checked || settled(bf)) done(); }, 100);
+          const poll = setInterval(() => { if (settled(bf)) done(); }, 100);
           const cap = setTimeout(done, 12000);
         });
       }
@@ -192,7 +191,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
       }
       // Keep the buffers of the given upcoming dates loading, and drop any other prefetched ones.
       function prefetch(indices) {
-        if (!cur || !cb.checked) return;
+        if (!cur) return;
         const want = new Map(indices.map((i) => [bufKey(i), i]));
         for (const [k, bf] of [...pre]) if (!want.has(k)) { drop(bf); pre.delete(k); }
         for (const [k, i] of want) if (!pre.has(k) && k !== cur.key) pre.set(k, addBuffer(i));
@@ -215,11 +214,6 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
       const legend = el('div', 'sh-legend');
       const legendBody = el('div');
       const controls = el('div', 'sh-legend-n');
-      const cb = document.createElement('input');
-      cb.type = 'checkbox'; cb.checked = true;
-      cb.addEventListener('change', () => {
-        for (const bf of [cur, ...pre.values()]) if (bf && map.getLayer(bf.id)) map.setLayoutProperty(bf.id, 'visibility', cb.checked ? 'visible' : 'none');
-      });
       const picker = datePicker((i) => { mode.index = i; return showDate(i); }, { prefetch, depth: prefetchDepth });
 
       function renderLegend() {
@@ -232,25 +226,25 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
             r.appendChild(sw); r.appendChild(document.createTextNode(meta.classes[k]));
             legendBody.appendChild(r);
           }
-          legendBody.appendChild(el('div', 'sh-legend-n', 'その日に撮れた場所だけ。透明 = 走査外'));
+          legendBody.appendChild(el('div', 'sh-legend-n', '当日 = その日に撮れた場所だけ。透明 = 撮れていない'));
         } else {
           const r0 = el('div', 'sh-legend-r sh-legend-head');
           r0.appendChild(el('span', 'sh-legend-lab', '見えてから(日)'));
           for (const l of AGE_LABELS) r0.appendChild(el('span', 'sh-legend-cell', l));
           legendBody.appendChild(r0);
-          for (const [name, off] of [['雪', 6], ['緑 (雪なし)', 1]]) {
+          for (const [name, off] of [['雪', 6], ['雪以外', 1]]) {
             const r = el('div', 'sh-legend-r');
             r.appendChild(el('span', 'sh-legend-lab', name));
             for (let i = 0; i < 5; i++) { const sw = el('i', 'sh-legend-cell'); sw.style.background = view.palette.state[off + i]; r.appendChild(sw); }
             legendBody.appendChild(r);
           }
-          legendBody.appendChild(el('div', 'sh-legend-n', '最後に晴れて見えた状態。色が薄いほど古い。透明 = まだ一度も見えていない'));
+          legendBody.appendChild(el('div', 'sh-legend-n', '累積 = 最後に晴れて見えた状態。色が薄いほど古い。透明 = まだ一度も見えていない'));
         }
         picker.set(dates(), mode.index);
       }
 
       const modes = el('div', 'sh-legend-n');
-      for (const [val, label] of [['state', '最終既知'], ['obs', '観測値']]) {
+      for (const [val, label] of [['state', '累積'], ['obs', '当日']]) {
         if (!view[val].length) continue;
         const lab = el('label', 'sh-mode'); const rb = document.createElement('input');
         rb.type = 'radio'; rb.name = 'sh-mode'; rb.checked = mode.value === val;
@@ -270,10 +264,6 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
       controls.appendChild(modes);
       const sliderRow = el('div'); sliderRow.appendChild(picker.el);
       controls.appendChild(sliderRow);
-      const tg = el('div'); const tgl = el('label');
-      tgl.appendChild(cb); tgl.appendChild(document.createTextNode(' セルを表示'));
-      tg.appendChild(tgl);
-      controls.appendChild(tg);
       legend.appendChild(legendBody);
       legend.appendChild(controls);
       legend.appendChild(el('div', 'sh-legend-n sh-attr', 'Contains modified Copernicus Sentinel data 2026 / 国土数値情報(行政区域データ)(国土交通省)をもとに作成 / 国土地理院'));
@@ -438,7 +428,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
           : ATTRIBUTION + '。日付は、◀ ▶ かカレンダーで選べます (その日に撮れた観測だけの値。同じ日に複数回撮れた場所は、最後に晴れて見えた観測を使います)。写らなかった市町村は無データです。「見えた割合」と「走査できた割合」は、市町村全体に対する割合なので、一部しか写らなかった日は小さくなります。積雪率と雲の割合は、写った範囲だけの割合です。';
       } else {
         state.map.setSeries(latest);
-        noteText = ATTRIBUTION + '。最新の日の値です (日付は上の見出し)。最終既知の計算は、雲で見えなかった場所に、最後に見えた状態を使います。';
+        noteText = ATTRIBUTION + '。最新の日の値です (日付は上の見出し)。累積の計算は、雲で見えなかった場所に、最後に見えた状態を使います。';
       }
       host.appendChild(el('div', 'sh-tabular-note', noteText));
     }).catch((err) => { host.appendChild(el('p', 'sh-p', '読み込みに失敗: ' + err.message)); });
