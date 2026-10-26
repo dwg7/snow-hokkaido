@@ -118,11 +118,36 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
       // work and labels stay on top; the basemap already draws prefecture / subprefecture / municipality boundaries for
       // the whole region. 'nearest' keeps cell edges crisp; it rendered black for an image source in the embedded
       // browser (cause unconfirmed), so check other browsers too.
-      // Double buffering: the next dates' rasters are added with raster-opacity 0.001 (loaded, practically not drawn; opacity values
-      // below 1 rendered black in the embedded browser, so only 0.001 and 1 are used) and shown (opacity 1, old one
-      // removed) only after their tiles have loaded. `pre` holds the prefetched buffers by key.
+      // Double buffering: the next dates' rasters are added at raster-opacity 0.001 (loaded, practically not drawn: MapLibre
+      // loads no tiles at 0) and shown only after their tiles have loaded, fading in over the old one. `pre` holds the
+      // prefetched buffers by key. (Partial opacity is fine for these PMTiles raster layers: 0.5 was drawn lighter, not
+      // black, in the embedded browser; the black rendering seen earlier was with an image source.)
       const HIDDEN = 0.001;  // MapLibre loads no tiles for a raster layer at opacity 0, so "hidden" is practically transparent instead
       let seq = 0, token = 0, cur = null;
+      // "Loading" cue: while a requested date is not on screen yet, the map is dimmed (after 200 ms, so quick loads do not
+      // flash), so the raster that is still shown is not taken for the requested date.
+      const loadingEl = el('div', 'sh-loading');
+      const loadingText = el('span', 'sh-loading-t', '');
+      loadingEl.appendChild(loadingText);
+      wrap.appendChild(loadingEl);
+      let loadTimer = null;
+      function loadingOn(label) {
+        clearTimeout(loadTimer);
+        loadTimer = setTimeout(() => { loadingText.textContent = '読み込み中 ' + label; loadingEl.classList.add('on'); }, 200);
+      }
+      function loadingOff() { clearTimeout(loadTimer); loadingEl.classList.remove('on'); }
+      // Fade the new raster in over the old one (the old one stays at opacity 1 below), then the caller drops the old one.
+      function fadeIn(bf, ms) {
+        return new Promise((resolve) => {
+          const t0 = performance.now();
+          const iv = setInterval(() => {
+            const t = Math.min(1, (performance.now() - t0) / ms);
+            if (!map.getLayer(bf.id)) { clearInterval(iv); return resolve(); }
+            map.setPaintProperty(bf.id, 'raster-opacity', Math.max(HIDDEN, t));
+            if (t >= 1) { clearInterval(iv); resolve(); }
+          }, 33);
+        });
+      }
       const pre = new Map();
       const bufKey = (i) => mode.value + ':' + dates()[i];
       function addBuffer(i) {
@@ -172,22 +197,27 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
       // Immediate replacement (first draw, mode change).
       function showLayer() {
         token++;
+        loadingOff();
         drop(cur); dropAllPre();
         cur = addBuffer(mode.index);
         map.setPaintProperty(cur.id, 'raster-opacity', 1);
         renderLegend();
       }
-      // Show a date once it has loaded; the promise resolves when it is on screen.
+      // Show a date once it has loaded, fading it in; the promise resolves when it is fully on screen.
       async function showDate(i) {
         const my = ++token;
+        loadingOn(dates()[i]);
         const key = bufKey(i);
         let bf = pre.get(key);
         if (bf) pre.delete(key); else bf = addBuffer(i);
         await loaded(bf);
-        if (my !== token) { drop(bf); return; }  // a newer request took over
-        map.setPaintProperty(bf.id, 'raster-opacity', 1);
-        const old = cur; cur = bf; drop(old);
+        if (my !== token) { drop(bf); return; }  // a newer request took over (and keeps the loading cue)
+        loadingOff();
+        const old = cur; cur = bf;
         renderLegend();
+        const frame = picker.frameMs();  // while playing, fade for up to half a frame; for a single pick, 150 ms
+        await fadeIn(bf, frame ? Math.min(600, 0.5 * frame) : 150);
+        drop(old);
       }
       // Keep the buffers of the given upcoming dates loading, and drop any other prefetched ones.
       function prefetch(indices) {
@@ -395,7 +425,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
     for (const n of [play, speed, loopLab]) bar2.appendChild(n);
     root.appendChild(bar); root.appendChild(bar2); root.appendChild(pop);
     return {
-      el: root, stop, get index() { return idx; },
+      el: root, stop, frameMs: () => (playing ? 1000 * +speed.value : 0), get index() { return idx; },
       set(newDates, newIdx) { dates = newDates; idx = Math.min(Math.max(newIdx, 0), Math.max(dates.length - 1, 0)); update(); }
     };
   }
