@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>snow-hokkaido</title>
     <!-- Versions are pinned; confirm dist files exist with `curl -sI` before changing (a missing file gives a blank page). -->
+    <!-- open the connections early: the first request to each host otherwise pays the connection setup (up to 2.5 s measured) -->
+    <link rel="preconnect" href="https://data.source.coop" crossorigin />
+    <link rel="preconnect" href="https://stars.optgeo.org" crossorigin />
     <link rel="stylesheet" href="https://unpkg.com/openmct@4.3.1/dist/espressoTheme.css" />
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" />
     <link rel="stylesheet" href="./vendor/tabularmap/style.css" />

@@ -149,6 +149,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
         });
       }
       const pre = new Map();
+      const live = new Set();  // every buffer added and not dropped yet (shown, prefetched or still loading)
       const bufKey = (i) => mode.value + ':' + dates()[i];
       function addBuffer(i) {
         const id = 'obs-' + (++seq);
@@ -156,12 +157,15 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
         map.addSource(id, { type: 'raster', url: 'pmtiles://' + url, tileSize: 256 });
         map.addLayer({ id, type: 'raster', source: id, paint: { 'raster-resampling': 'nearest', 'raster-opacity': HIDDEN } }, rasterBefore);
         if (!tracker) tracker = setInterval(trackBuffers, 100);
-        return { id, key: bufKey(i), n: 0, since: performance.now(), created: performance.now(), ready: false };
+        const bf = { id, key: bufKey(i), n: 0, since: performance.now(), created: performance.now(), ready: false };
+        live.add(bf);
+        return bf;
       }
       function drop(bf) {
         if (!bf) return;
         if (map.getLayer(bf.id)) map.removeLayer(bf.id);
         if (map.getSource(bf.id)) map.removeSource(bf.id);
+        live.delete(bf);
       }
       function dropAllPre() { for (const bf of pre.values()) drop(bf); pre.clear(); }
       // A buffer is ready when its count of loaded tiles is above 0 and has not changed for 300 ms. (MapLibre's
@@ -174,8 +178,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
       const prefetchDepth = (frameMs) => (loadMs > 0.8 * frameMs ? 2 : 1);
       function trackBuffers() {
         const now = performance.now();
-        for (const bf of [cur, ...pre.values()]) {
-          if (!bf) continue;
+        for (const bf of live) {
           const c = map.style && map.style.sourceCaches && map.style.sourceCaches[bf.id];
           const n = c && c._tiles ? Object.values(c._tiles).filter((t) => t.state === 'loaded').length : 0;
           if (n !== bf.n) { bf.n = n; bf.since = now; }
