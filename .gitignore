@@ -12,3 +12,7 @@ __pycache__/
 # backups made before a rule migration (src/migrate_obs_rule.py)
 /ledger/obs-*/
 /ledger-winter/
+# per-pass events and the derived state/daily tables are caches that `just daily` / `just rebuild` recompute from obs
+/ledger/events/
+/ledger/derived/
+/logs/
