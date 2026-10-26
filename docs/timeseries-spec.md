@@ -80,3 +80,5 @@ Not done yet:
 ## Not decided here
 
 D2 (VIIRS counting), D3/D4 (canopy, water masks), D7 (carry-over days N), D8 (hysteresis).
+
+**Decision (2026-10-26, owner): D7.** Not decided now; it is decided when it is needed. If it is, N = 60 days (measured on the 2025 season: a 60-day limit would turn only 0-5% of the last-known cells into "unknown"; 30 days would turn 10-30%). It is a display/semantics rule; it would not make rebuilds noticeably faster (the cost is reading imagery, not replaying the state).
