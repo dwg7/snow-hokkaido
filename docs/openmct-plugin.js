@@ -44,6 +44,15 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
     if (!r.ok) throw new Error(p + ' ' + r.status);
     return r.json();
   });
+  // The files that change every day (stage1.json, series/*.json) are published next to view/ on Source Cooperative, so a
+  // daily run needs no commit; the copies under dataUrl are the fallback (and what ?viewbase=./data/view/ reads).
+  const fetchDaily = (p) => {
+    const bases = viewBases.map((b) => b.replace(/view\/$/, ''));
+    const tryBase = (i) => fetch(new URL(bases[i] + p, document.baseURI).href, { cache: 'no-store' })
+      .then((r) => { if (!r.ok) throw new Error(p + ': ' + r.status); return r.json(); })
+      .catch((err) => { if (i + 1 < bases.length) return tryBase(i + 1); throw err; });
+    return tryBase(0);
+  };
   let layoutPromise = null;
   const loadLayout = () => layoutPromise || (layoutPromise = Promise.all([
     fetchJson('layout-v08.json'), fetchJson('municipalities.json'), fetchJson('sapporo-wards.json')
@@ -63,7 +72,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
     host.appendChild(el('p', 'sh-p', '北海道の積雪を、雲で見えなかったことも含めて記録する台帳の計器盤。左のツリーから計器を選んでください。'));
     host.appendChild(el('p', 'sh-p sh-muted', ATTRIBUTION));
     host.appendChild(el('p', 'sh-p', '現在は2026-10-18の1パス(北海道の広い範囲を1回で撮影した1回分)の集計です。写真に写らなかった市町村は「無データ」です。地図の計器は、セルの色の上に、背景地図の線画(海岸・川・道路・行政界)と地名を重ねて表示します。'));
-    fetchJson('stage1.json').then((m) => {
+    fetchDaily('stage1.json').then((m) => {
       host.appendChild(el('p', 'sh-p sh-muted', '観測: ' + m.asOf + ' / ' + m.scene + ' / ' + m.algo_version + ' (暫定の判定規則)'));
     }).catch(() => {});
   }
@@ -97,7 +106,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
     ensurePmtiles();
     const wrap = el('div', 'sh-map');
     host.appendChild(wrap);
-    Promise.all([fetchJson('stage1.json'), loadViewIndex()]).then(([meta, view]) => {
+    Promise.all([fetchDaily('stage1.json'), loadViewIndex()]).then(([meta, view]) => {
       if (state.disposed) return;
       const map = state.map = new maplibregl.Map({
         container: wrap,
@@ -460,7 +469,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
 
   function tabularView(host, state, key, name) {
     const hasTs = TS_KEYS.includes(key);
-    Promise.all([loadLayout(), fetchJson('series/' + key + '.json'), hasTs ? fetchJson('series/' + key + '_ts.json') : Promise.resolve(null)]).then(([data, latest, ts]) => {
+    Promise.all([loadLayout(), fetchDaily('series/' + key + '.json'), hasTs ? fetchDaily('series/' + key + '_ts.json') : Promise.resolve(null)]).then(([data, latest, ts]) => {
       if (state.disposed) return;
       state.map = window.TabularMap.create(host, {
         layout: data.layout, municipalities: data.municipalities, wards: data.wards,

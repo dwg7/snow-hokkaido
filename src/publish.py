@@ -6,6 +6,7 @@ Layout (docs/storage.md; decisions of the owner):
   derived/state/season=YYYY.parquet
   pixel/season=YYYY/latest.tif                   latest cell ledger only (a cache; replay needs obs-lite)
   view/obs-<date>.pmtiles, view/state-<date>.pmtiles, view/dates.json
+  series/*.json, stage1.json                      what the dashboard reads every day (docs/data/series, docs/data/stage1.json)
 
 Not published: municipality boundary geometry and anything rasterized from it (grid/cellmap.tif, muni/master.parquet);
 users fetch N03 themselves (`just fetch-n03`, `just cellmap`).
@@ -96,6 +97,15 @@ def copy_plain(ledger, staging, docs):
         t = staging / "pixel" / latest.parent.name / "latest.tif"
         t.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(latest, t)  # always replaced: its content changes every day
+        files.append(t)
+    # the small files the dashboard reads every day (series for the tabular maps, the legend meta): next to view/, so a daily
+    # run needs no commit and no Pages rebuild (the copies in docs/data/ stay as the page's fallback)
+    for f in sorted(glob.glob(f"{docs}/data/series/*.json")) + [f"{docs}/data/stage1.json"]:
+        rel = Path(f).relative_to(f"{docs}/data")
+        t = staging / rel
+        t.parent.mkdir(parents=True, exist_ok=True)
+        if not t.exists() or Path(f).stat().st_mtime > t.stat().st_mtime or Path(f).stat().st_size != t.stat().st_size:
+            shutil.copy2(f, t)
         files.append(t)
     for f in sorted(glob.glob(f"{docs}/data/view/*")):
         t = staging / "view" / Path(f).name
