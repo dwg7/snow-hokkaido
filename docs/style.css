@@ -65,3 +65,4 @@ body { font-size: 13px; line-height: 1.5; }
 .sh-loading { position: absolute; inset: 0; z-index: 1; background: rgba(0, 0, 0, .4); opacity: 0; pointer-events: none; transition: opacity .15s; }
 .sh-loading.on { opacity: 1; }
 .sh-loading-t { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #fff; background: rgba(0, 0, 0, .65); padding: 4px 14px; border-radius: 4px; font-size: 13px; }
+.sh-dp-b.sh-on { background: #3d5a73; border-color: #5b86a8; color: #fff; }

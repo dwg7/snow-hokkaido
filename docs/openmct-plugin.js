@@ -155,7 +155,7 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
         const id = 'obs-' + (++seq);
         const url = new URL(view.base + view.templates[mode.value].replace('{date}', dates()[i]), document.baseURI).href;
         map.addSource(id, { type: 'raster', url: 'pmtiles://' + url, tileSize: 256 });
-        map.addLayer({ id, type: 'raster', source: id, paint: { 'raster-resampling': 'nearest', 'raster-opacity': HIDDEN } }, rasterBefore);
+        map.addLayer({ id, type: 'raster', source: id, paint: { 'raster-resampling': 'nearest', 'raster-opacity': HIDDEN } }, map.getLayer('shade') ? 'shade' : rasterBefore);
         if (!tracker) tracker = setInterval(trackBuffers, 100);
         const bf = { id, key: bufKey(i), n: 0, since: performance.now(), created: performance.now(), ready: false };
         live.add(bf);
@@ -295,8 +295,33 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
         modes.appendChild(lab);
       }
       controls.appendChild(modes);
+      // Relief: a 3D terrain view and a hillshade, both from the Japan DEM (GSI, Terrarium tiles) served by stars. Off by
+      // default; the DEM tiles are 140-230 KB each, so they are fetched only when one of the buttons is used.
+      const DEM_URL = (options && options.demUrl) || 'https://stars.optgeo.org/mapterhorn-japan-bridge';
+      function ensureDem() {
+        if (!map.getSource('dem')) map.addSource('dem', { type: 'raster-dem', url: DEM_URL, encoding: 'terrarium', tileSize: 512, maxzoom: 14 });
+      }
+      const mkToggle = (text, title) => { const b = el('button', 'sh-dp-b', text); b.type = 'button'; b.title = title; return b; };
+      const b3d = mkToggle('3D', '地形を立体で表示する (もう一度押すと平面に戻る)');
+      const bShade = mkToggle('陰影', '地形の陰影を重ねる');
+      b3d.addEventListener('click', () => {
+        const on = !b3d.classList.contains('sh-on');
+        b3d.classList.toggle('sh-on', on);
+        if (on) { ensureDem(); map.setTerrain({ source: 'dem', exaggeration: 1.5 }); map.easeTo({ pitch: 60, duration: 900 }); }
+        else { map.setTerrain(null); map.easeTo({ pitch: 0, bearing: 0, duration: 600 }); }
+      });
+      bShade.addEventListener('click', () => {
+        const on = !bShade.classList.contains('sh-on');
+        bShade.classList.toggle('sh-on', on);
+        if (on) {
+          ensureDem();
+          if (!map.getLayer('shade')) map.addLayer({ id: 'shade', type: 'hillshade', source: 'dem', paint: { 'hillshade-exaggeration': 0.2, 'hillshade-shadow-color': '#000000', 'hillshade-highlight-color': '#ffffff', 'hillshade-illumination-direction': 315 } }, rasterBefore);
+        } else if (map.getLayer('shade')) map.removeLayer('shade');
+      });
+      const reliefRow = el('div', 'sh-dp-bar'); reliefRow.appendChild(b3d); reliefRow.appendChild(bShade);
       const sliderRow = el('div'); sliderRow.appendChild(picker.el);
       controls.appendChild(sliderRow);
+      controls.appendChild(reliefRow);
       legend.appendChild(legendBody);
       legend.appendChild(controls);
       legend.appendChild(el('div', 'sh-legend-n sh-attr', 'Contains modified Copernicus Sentinel data 2026 / 国土数値情報(行政区域データ)(国土交通省)をもとに作成 / 国土地理院'));
