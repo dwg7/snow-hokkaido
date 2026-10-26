@@ -52,6 +52,6 @@ Goal: every day, pick up new Sentinel-2 passes over Hokkaido, extend the ledger 
 - **Upload:** still a manual `source-coop login` + `just publish --upload` (the login lasts about a day and needs a browser). No API-key option was found; not checked beyond that. When the published data are 3 or more days behind, the job shows a macOS notification as a reminder.
 - **Failure:** a macOS notification with the log path; the run is idempotent, so running it again repairs it. One run at a time (a lock; stale after 6 h).
 - **Run dir:** `~/snow-hokkaido-run`, a clone of the repository holding the ledger data (obs, pixel, events, derived, tiles, staging). It is separate from the Claude worktrees so that cleaning those cannot remove the data.
-- **Sleep:** launchd runs a missed 02:00 job after the Mac wakes. To wake the Mac for it: `sudo pmset repeat wakeorpoweron 01:55` (needs the owner's password; not done here).
+- **Sleep:** launchd runs a missed 02:00 job after the Mac wakes. To wake the Mac for it: `sudo pmset repeat wakeorpoweron MTWRFSU 01:55:00` (needs the owner's password; not done here).
 - **Measured:** one run with one new pass took 80 s (lookback 1) and 290 s (lookback 3) in the 2026 season (state replay from 2026-08-01); the replay grows by about 6 s per calendar day until the next 1 August. The incremental state (resume from a snapshot) is therefore not needed yet.
 - Not done: incremental state; `superseded_by`; alerting by other means than the macOS notification.
