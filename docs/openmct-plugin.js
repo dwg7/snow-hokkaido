@@ -115,7 +115,8 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
         ...(initialView() || { bounds: [[view.bbox[0], view.bbox[1]], [view.bbox[2], view.bbox[3]]], fitBoundsOptions: { padding: 20 } }),
         maxZoom: 17
       });
-      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+      // zoom buttons plus a compass: it follows bearing and pitch, and a click returns the map to north-up and flat
+      map.addControl(new maplibregl.NavigationControl({ showCompass: true, visualizePitch: true }), 'top-right');
 
       // View state: which display layer (mode) and which date. "state" = last known state with age; "obs" = observed that day.
       const mode = { value: view.state.length ? 'state' : 'obs', index: 0 };
@@ -254,12 +255,16 @@ window.SnowHokkaidoPlugin = function SnowHokkaidoPlugin(options) {
       });
 
       const legend = el('div', 'sh-legend');
+      // Date of the raster on screen (top left); renderLegend runs when a date is fully shown, so it never runs ahead of the map.
+      const dateEl = el('div', 'sh-date');
+      wrap.appendChild(dateEl);
       const legendBody = el('div');
       const controls = el('div', 'sh-legend-n');
       const picker = datePicker((i) => { mode.index = i; return showDate(i); }, { prefetch, depth: prefetchDepth });
 
       function renderLegend() {
         legendBody.textContent = '';
+        dateEl.textContent = dates()[mode.index];
         legendBody.appendChild(el('div', 'sh-legend-t', dates()[mode.index] + ' (JST)'));
         if (mode.value === 'obs') {
           for (const k of ['4', '3', '2', '1']) {
