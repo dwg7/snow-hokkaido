@@ -18,7 +18,7 @@ events +obs:
     uv run --with rasterio --with numpy --with pandas --with pyarrow python src/make_events.py --obs {{obs}}
 
 test:
-    uv run --with pytest --with rasterio --with numpy --with pandas --with pyarrow --with pmtiles --with pillow --with pyproj pytest -q
+    uv run --with pytest --with rasterio --with numpy --with pandas --with pyarrow --with pmtiles --with pillow --with pyproj --with shapely pytest -q
 
 docs-data:
     uv run --with pandas --with pyarrow python src/export_docs.py
