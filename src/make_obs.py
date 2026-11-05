@@ -45,10 +45,26 @@ SCL_NODATA = (0, 1)  # no data, saturated/defective (unusable)
 # everything else (2 dark, 4, 5, 6 water, 7 unclassified, 11 snow/ice) counts as clear
 
 
-def stac_search(body):
-    req = urllib.request.Request(f"{STAC}/search", json.dumps(body).encode(), {"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=90) as r:
-        return json.load(r)["features"]
+def stac_search(body, attempts=4, deadline_s=60):
+    """STAC search, retried: a read can stall mid-body (the socket timeout covers one recv, not the whole response),
+    so each attempt also has a total time limit; the wait grows 5, 10, 20 s between attempts."""
+    data = json.dumps(body).encode()
+    for k in range(attempts):
+        try:
+            req = urllib.request.Request(f"{STAC}/search", data, {"Content-Type": "application/json"})
+            end = time.monotonic() + deadline_s
+            chunks = []
+            with urllib.request.urlopen(req, timeout=30) as r:
+                while chunk := r.read(1 << 16):
+                    chunks.append(chunk)
+                    if time.monotonic() > end:
+                        raise TimeoutError(f"STAC response not complete within {deadline_s} s")
+            return json.loads(b"".join(chunks))["features"]
+        except (OSError, ValueError) as e:  # URLError, timeouts and resets are OSError; a cut-off body is a ValueError
+            if k == attempts - 1:
+                raise
+            print(f"STAC search failed ({e!r}); retry {k + 1}/{attempts - 1}", flush=True)
+            time.sleep(5 * 2 ** k)
 
 
 def day_items(d, bbox):
