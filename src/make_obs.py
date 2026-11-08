@@ -146,7 +146,11 @@ def process_granule(item, tx, ty):
     hrefs = {k: item["assets"][k]["href"] for k in ("green", "scl")}  # green: header only, for the 10 m window
     x0, y0, (west, south, east, north), _ = tile_geom(tx, ty)
     n = N9
-    with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", GDAL_HTTP_MAX_RETRY="3"):
+    # Time limits on every HTTP request: without them one stalled S3 read held a worker for 2.5-4.5 hours
+    # (daily runs of 2026-11-03 and 2026-11-04; a tile normally takes about a minute). A timeout surfaces as a
+    # RasterioIOError, which read_with_retry retries.
+    with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", GDAL_HTTP_MAX_RETRY="3", GDAL_HTTP_RETRY_DELAY="2",
+                      GDAL_HTTP_CONNECTTIMEOUT="15", GDAL_HTTP_TIMEOUT="60"):
         with rasterio.open(hrefs["green"]) as g:
             to_utm = Transformer.from_crs(3857, g.crs, always_xy=True)
             to_3857 = Transformer.from_crs(g.crs, 3857, always_xy=True)
