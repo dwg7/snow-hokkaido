@@ -45,9 +45,18 @@ SCL_NODATA = (0, 1)  # no data, saturated/defective (unusable)
 # everything else (2 dark, 4, 5, 6 water, 7 unclassified, 11 snow/ice) counts as clear
 
 
-def stac_search(body, attempts=4, deadline_s=60):
+RETRY_ATTEMPTS = 6
+
+
+def backoff_s(k):
+    """Wait before retry k+1: 15, 30, 60, 120, 240 s (about 8 minutes in all). The 02:00 job wakes the Mac for a few
+    seconds before Wi-Fi is up, so a short wait ends in "could not resolve host" (runs of 2026-11-18 and 11-21)."""
+    return min(15 * 2 ** k, 240)
+
+
+def stac_search(body, attempts=RETRY_ATTEMPTS, deadline_s=60):
     """STAC search, retried: a read can stall mid-body (the socket timeout covers one recv, not the whole response),
-    so each attempt also has a total time limit; the wait grows 5, 10, 20 s between attempts."""
+    so each attempt also has a total time limit; the wait between attempts is backoff_s."""
     data = json.dumps(body).encode()
     for k in range(attempts):
         try:
@@ -64,7 +73,7 @@ def stac_search(body, attempts=4, deadline_s=60):
             if k == attempts - 1:
                 raise
             print(f"STAC search failed ({e!r}); retry {k + 1}/{attempts - 1}", flush=True)
-            time.sleep(5 * 2 ** k)
+            time.sleep(backoff_s(k))
 
 
 def day_items(d, bbox):
@@ -207,7 +216,7 @@ def process_granule(item, tx, ty):
             "pixels_per_cell": (int(total[seen].min()), float(np.median(total[seen])), int(total[seen].max()))}
 
 
-def read_with_retry(item, tx, ty, attempts=4):
+def read_with_retry(item, tx, ty, attempts=RETRY_ATTEMPTS):
     """process_granule, retried: range reads from S3 sometimes come back short (CPLE_AppDefinedError / RasterioIOError)."""
     for k in range(attempts):
         try:
@@ -215,7 +224,7 @@ def read_with_retry(item, tx, ty, attempts=4):
         except rasterio.errors.RasterioError:
             if k == attempts - 1:
                 raise
-            time.sleep(5 * 2 ** k)
+            time.sleep(backoff_s(k))
 
 
 def write_obs(path, tx, ty, parts, items, considered=None):

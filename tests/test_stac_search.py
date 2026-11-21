@@ -73,3 +73,16 @@ def test_total_time_limit(monkeypatch):
     monkeypatch.setattr(make_obs.urllib.request, "urlopen", lambda req, timeout: Resp(b"x" * 200000))
     with pytest.raises(TimeoutError):
         make_obs.stac_search({}, attempts=1, deadline_s=60)
+
+
+def test_waits_cover_a_slow_wifi_wakeup(monkeypatch):
+    waits = []
+    monkeypatch.setattr(make_obs.time, "sleep", waits.append)
+
+    def fake(req, timeout):
+        raise urllib.error.URLError("nodename nor servname provided, or not known")
+
+    monkeypatch.setattr(make_obs.urllib.request, "urlopen", fake)
+    with pytest.raises(urllib.error.URLError):
+        make_obs.stac_search({})
+    assert waits == [15, 30, 60, 120, 240]  # 7.75 minutes before giving up
