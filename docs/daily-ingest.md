@@ -1,4 +1,4 @@
-# Daily ingest (design; steps 1-2 of the work order are implemented)
+# Daily ingest (in operation since 2026-10-27; the design notes below are kept, the current setup is in the last two sections)
 
 Goal: every day, pick up new Sentinel-2 passes over Hokkaido, extend the ledger and the published files, with no manual steps except what cannot be automated (see "Open questions"). Everything below reuses what exists: `make_obs.py` (resumable), `make_events.py`, `make_state.py`, `make_view_tiles.py`, `publish.py`.
 
@@ -38,12 +38,10 @@ Goal: every day, pick up new Sentinel-2 passes over Hokkaido, extend the ledger 
 
 1. late-granule refresh in `make_obs.py`; 2. `just daily` (steps 1-5, dry-run publish); 3. incremental state from the `pixel` snapshot with the weekly full check; 4. move `series/*.json` to Source Cooperative; 5. scheduler and notification once the credential question is settled.
 
-## Status
+## Status (2026-11-28)
 
-- Implemented: the late-granule refresh in `make_obs.py` (each file records `granules_considered`; a file is rebuilt when STAC shows granules it did not consider; older files without the tag count as complete), `--touched` (pass directories written), `make_state.py --tiles-from`, a persistent `publish/` staging directory (unchanged files keep their mtime, so `aws s3 sync` should not re-upload them; not checked against the real bucket because the login had expired), and `just daily [--today D] [--lookback N] [--upload]` (`src/daily.py`).
-- Tried once, `just daily --today 2026-10-21 --lookback 2`: no scene for 2026-10-21 was in STAC yet (obs step 1 s), 2026-10-20 was checked and nothing rebuilt (2 s), the state replay took 18 s, the whole run 23 s, and the publish plan listed 95 files (50.1 MB). **Not yet exercised on real data:** a run that finds new passes, and a late-arriving granule triggering a rebuild.
-- Not implemented: resuming the state from the cached `pixel` snapshot, `superseded_by`, `series/*.json` on Source Cooperative, scheduler, notification.
-
+- Implemented and running: late-granule refresh, `just daily`, `series/*.json` and `stage1.json` on Source Cooperative, the launchd job and `scripts/run-daily.sh`, the macOS notification.
+- Not implemented: resuming the state from the cached `pixel` snapshot, `superseded_by`.
 
 ## Decisions (owner, 2026-10-26) and what is set up
 
@@ -53,7 +51,9 @@ Goal: every day, pick up new Sentinel-2 passes over Hokkaido, extend the ledger 
 - **Failure:** a macOS notification with the log path; the run is idempotent, so running it again repairs it. One run at a time (a lock; stale after 6 h).
 - **Run dir:** `~/snow-hokkaido-run`, a clone of the repository holding the ledger data (obs, pixel, events, derived, tiles, staging). It is separate from the Claude worktrees so that cleaning those cannot remove the data.
 - **Sleep:** launchd runs a missed 02:00 job after the Mac wakes. To wake the Mac for it: `sudo pmset repeat wakeorpoweron MTWRFSU 01:55:00` (needs the owner's password; not done here).
-- **Sleep makes a run slow, not wrong:** on battery power the Mac wakes for a few seconds (DarkWake) and sleeps again, so the job is suspended between wakes. Runs of 2026-11-03, 11-04, 11-07, 11-10 and 11-11 took 3.4-9.6 hours of wall clock (one tile read up to 3.2 hours) against about 100 s of work, and all ended with exit code 0 and complete data (checked on `pmset -g log`; GDAL stalls were suspected first, and the HTTP time limits stay as a guard). Decision (owner, 2026-11-11): no `caffeinate`; a slow night is accepted, and the owner starts `scripts/run-daily.sh` by hand when a fresh update is wanted (then `just publish --upload` after `source-coop login`). Keeping the Mac on AC power is the reliable remedy if it matters.
+- **Sleep makes a run slow, not wrong:** the Mac wakes for a few seconds (DarkWake) and sleeps again, so the job is suspended between wakes. This happens on battery and also on AC power (first written as battery only; corrected after the run of 2026-11-13, checked on `pmset -g log`). Runs of 3-10 hours of wall clock against about 100-300 s of work ended with exit code 0 and complete data. Some runs also start at 04:00-04:11 instead of 02:00 (cause not checked). Decision (owner, 2026-11-11): no `caffeinate`; a slow night is accepted.
+- **Network right after the wake:** Wi-Fi is often not up when the job starts; uv (PyPI), STAC and S3 then fail on "could not resolve host" (runs of 2026-11-18, 11-21, 11-22). Guards: `run-daily.sh` waits up to 10 minutes for the network first (`NETWORK_WAIT_S`); STAC search and granule reads retry 6 times with waits of 15-240 s (about 8 minutes) and a 60 s limit per STAC response; GDAL has HTTP time limits (60 s, connect 15 s). A day that still fails is picked up by the next run (3-day lookback). Not yet seen: a real wake where the 10-minute wait was needed.
+- **Routine (owner, from 2026-11-11):** besides the 02:00 job, the owner asks for an update when wanted; then `scripts/run-daily.sh` is started by hand and, after `source-coop login`, published. The upload runs over mobile Wi-Fi, so check the volume first with `aws s3 sync publish/ s3://smartmaps/foil4gr1/snow-hokkaido/ --profile source-coop --endpoint-url https://data.source.coop --dryrun` (after `just publish` has staged). Measured: about 3-5 MB per new day; 33 MB for 9 days, 23 MB for 4 days, 19 MB for 3 days. `series/*.json` (about 5 MB) and `derived` (about 2 MB) go up in full every time, and every `state-*` tile from the first changed day on is uploaded again.
 - **Update frequency (measured 2026-11-12, 2024-08-01 to 2026-11-11):** 953 passes in 833 days; 812 days (97%) have a pass; mean gap between passes 21.0 h, median 23.5 h, max 72.2 h; acquisitions at 09:54-10:42 JST. Days with at least 20% of Hokkaido land seen clear (SCL, not cloud or shadow): 44%, with a mean gap of 2.4 days (median 2, p90 5, max 23). Earth Search item `created` is about 4.3 h after acquisition (12 items; the meaning of `created` is not checked); the 02:00 run therefore picks passes up about 16 h after acquisition. Summarized in README.md (更新の頻度).
 - **Measured:** one run with one new pass took 80 s (lookback 1) and 290 s (lookback 3) in the 2026 season (state replay from 2026-08-01); the replay grows by about 6 s per calendar day until the next 1 August. The incremental state (resume from a snapshot) is therefore not needed yet.
 - Not done: incremental state; `superseded_by`; alerting by other means than the macOS notification.
